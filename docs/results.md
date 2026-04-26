@@ -76,16 +76,16 @@ The system achieved an average hardware sorting time of **1.80 seconds per item*
 
 | Waste Class | Average Sorting Time |
 |---|---:|
-| Plastic Bottle | 1.50 s |
-| Can | 1.50 s |
-| Paper | 1.72 s |
+| Plastic Bottle | 1.85 s |
+| Can | 1.79 s |
+| Paper | 1.77 s |
 | Plastic Bag | 2.28 s |
-| Instant Noodle | 2.00 s |
-| Face Mask | 1.56 s |
-| Banana | 1.70 s |
-| Apple | 1.72 s |
-| Orange | 1.40 s |
-| Battery | 1.62 s |
+| Instant Noodle | 1.72 s |
+| Face Mask | 1.76 s |
+| Banana | 1.66 s |
+| Apple | 1.71 s |
+| Orange | 1.73 s |
+| Battery | 1.74 s |
 
 Most classes were sorted under or near the 2.00-second target line.
 
