@@ -5,7 +5,8 @@
 # Notes for NVIDIA Jetson deployment:
 # - This project targets NVIDIA Jetson Orin Nano with JetPack 6.x.
 # - PyTorch, TorchVision, TensorRT, CUDA-related libraries, and Jetson.GPIO
-#   should match the JetPack environment.
+#   should be installed according to the JetPack environment or provided by
+#   a Jetson-compatible environment/container.
 # - Do not blindly install desktop GPU package versions on Jetson.
 # - A Jetson-compatible Ultralytics environment or container may be used for
 #   YOLO/TensorRT-related deployment.
