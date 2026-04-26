@@ -1,0 +1,39 @@
+# Waste class mapping for the Edge AI Waste Classification System.
+#
+# The YOLO model detects 10 waste classes for sorting.
+# These 10 classes are mapped into 4 main waste categories:
+# recyclable waste, general waste, organic waste, and hazardous waste.
+#
+# The shutdown_card class is a special system control class used only
+# for safe shutdown and is not counted as one of the 10 waste classes.
+
+recyclable_waste:
+  display_name: "Recycle Waste"
+  classes:
+    - plastic_bottle
+    - can
+    - paper
+
+general_waste:
+  display_name: "General Waste"
+  classes:
+    - plastic_bag
+    - instant_noodle
+    - mask
+
+organic_waste:
+  display_name: "Organic Waste"
+  classes:
+    - banana
+    - apple
+    - orange
+
+hazardous_waste:
+  display_name: "Hazardous Waste"
+  classes:
+    - battery
+
+shutdown_card:
+  display_name: "Shutdown Card"
+  classes:
+    - shutdown_card

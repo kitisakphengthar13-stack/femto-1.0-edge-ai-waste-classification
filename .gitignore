@@ -1,0 +1,59 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Dataset directories
+data/
+dataset/
+datasets/
+data/images/
+dataset/images/
+datasets/images/
+data/labels/
+dataset/labels/
+datasets/labels/
+
+# YOLO training outputs
+runs/
+wandb/
+results/
+outputs/
+logs/
+*.log
+
+# Model files
+*.pt
+*.pth
+*.onnx
+*.engine
+*.trt
+*.torchscript
+
+# Keep models/README.md, but ignore model files inside models/
+models/*
+!models/README.md
+
+# Audio files
+sound/
+sounds/
+*.mp3
+*.wav
+
+# Video files
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# OS / IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
