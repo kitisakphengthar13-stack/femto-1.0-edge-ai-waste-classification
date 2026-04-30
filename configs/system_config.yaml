@@ -1,182 +1,72 @@
-# =========================================================
-# Femto 1.0 — System Configuration
-# Edge AI Waste Classification System
-# =========================================================
-
-project:
-  name: "Femto 1.0"
-  description: "Edge AI Waste Classification System"
-  device: "NVIDIA Jetson Orin Nano"
-
-# =========================================================
-# Model Configuration
-# =========================================================
-# Placeholder path.
-# Replace this with the actual TensorRT engine model path on the Jetson device.
-
 model:
   path: "path/to/best.engine"
   task: "detect"
-  format: "TensorRT engine"
-  input_size: 640
   confidence_threshold: 0.50
 
-# =========================================================
-# Camera Configuration
-# =========================================================
+decision:
+  buffer_size: 10
+  result_delay_seconds: 2.0
+  allow_multiple_objects: false
+
+shutdown:
+  class_name: "shutdown_card"
+  confidence_threshold: 0.70
+  buffer_size: 40
+  delay_seconds: 10.0
+  sound_path: "path/to/shutdown_alert.mp3"
+
+motion:
+  enabled: true
+  pixel_threshold: 1500
+  yolo_awake_duration_seconds: 2.5
+  frame_diff_threshold: 25
+  blur_kernel_size: 21
 
 camera:
-  type: "CSI Camera"
   sensor_id: 0
   width: 1280
   height: 720
   flip_method: 0
 
-  gstreamer:
-    maxperf: true
-    tnr_mode: 2
-    tnr_strength: 1
-    ee_mode: 2
-    ee_strength: 1.0
-    exposure_compensation: -1.0
-    isp_digital_gain_range: "1 1"
-    awb_mode: 1
-    ae_antibanding: 1
-    max_buffers: 1
-    drop: true
-
-# =========================================================
-# Motion Detection Configuration
-# =========================================================
-
-motion_detection:
-  enabled: true
-  threshold: 1500
-  yolo_wake_duration: 2.5
-  blur_kernel_size: 21
-  frame_difference_threshold: 25
-
-# =========================================================
-# Decision Logic Configuration
-# =========================================================
-
-decision_logic:
-  buffer_size: 10
-  result_delay: 2.0
-  allow_multiple_objects: false
-
-# =========================================================
-# Shutdown Card Configuration
-# =========================================================
-
-shutdown_card:
-  enabled: true
-  class_name: "shutdown_card"
-  confidence_threshold: 0.70
-  buffer_size: 40
-  shutdown_delay: 10.0
-  poweroff: true
-
-# =========================================================
-# Class Mapping Configuration
-# =========================================================
-# This path points to the class-to-category mapping file in this repository.
-
-class_mapping:
-  path: "configs/class_mapping.yaml"
-
-# =========================================================
-# Servo Motor Configuration
-# =========================================================
+audio:
+  startup_alert: "path/to/start_alert.mp3"
+  category_sounds:
+    Recycle Waste: "path/to/recycle.mp3"
+    General Waste: "path/to/general.mp3"
+    Organic Waste: "path/to/organic.mp3"
+    Hazardous Waste: "path/to/hazardous.mp3"
 
 servo:
-  frequency: 50
-
-  pins:
-    rotate: 32
-    tilt: 33
+  rotate_pin: 32
+  tilt_pin: 33
+  pwm_frequency: 50
 
   start_position:
     rotate_duty: 7.5
     tilt_duty: 4.12
 
-  release_rotate_pwm_after_start: true
-  release_rotate_pwm_after_sorting: true
-
-  timing:
-    rotate_start_time: 0.0
-    tilt_start_time: 0.3
-    tilt_return_time: 1.3
-    rotate_return_time: 1.7
-    cycle_complete_time: 2.0
-
-  mapping:
-    "Recycle Waste":
+  category_positions:
+    Recycle Waste:
       rotate_duty: 5.0
       tilt_duty: 7.5
-
-    "General Waste":
+    General Waste:
       rotate_duty: 10.5
       tilt_duty: 1.78
-
-    "Organic Waste":
+    Organic Waste:
       rotate_duty: 10.3
       tilt_duty: 7.5
-
-    "Hazardous Waste":
+    Hazardous Waste:
       rotate_duty: 5.0
       tilt_duty: 1.78
 
-# =========================================================
-# Audio Configuration
-# =========================================================
-# Placeholder paths.
-# Audio files are not included in this repository.
-# Replace these with the actual audio file paths on the Jetson device.
-
-audio:
-  enabled: true
-  mixer_channel: 0
-
-  startup_alert: "path/to/start_alert.mp3"
-  shutdown_alert: "path/to/shutdown_alert.mp3"
-
-  sounds:
-    "Recycle Waste": "path/to/recycle.mp3"
-    "General Waste": "path/to/general.mp3"
-    "Organic Waste": "path/to/organic.mp3"
-    "Hazardous Waste": "path/to/hazardous.mp3"
-
-# =========================================================
-# Runtime Configuration
-# =========================================================
+  timing:
+    rotate_step_seconds: 0.3
+    tilt_return_seconds: 1.3
+    rotate_return_seconds: 1.7
+    cycle_done_seconds: 2.0
+    startup_delay_seconds: 0.5
+    release_rotate_pwm: true
 
 runtime:
-  sleep_interval: 0.005
-  camera_drop_delay: 0.05
-  startup_servo_delay: 0.05
-  servo_initial_hold_time: 0.5
-  cleanup_servo_delay: 0.08
-  shutdown_io_delay: 0.5
-
-# =========================================================
-# Logging / Warning Configuration
-# =========================================================
-
-logging:
-  suppress_gpio_runtime_warning: true
-  opencv_log_level: "FATAL"
-  opencv_videoio_debug: "0"
-  verbose_yolo: false
-
-# =========================================================
-# Performance Summary
-# Values are overall averages across all 10 waste classes.
-# These values come from the software and hardware performance graphs.
-# =========================================================
-
-performance:
-  overall_software_accuracy: "93.3%"
-  average_hardware_sorting_time: "1.80 seconds/item"
-  number_of_waste_classes: 10
-  number_of_waste_categories: 4
+  loop_sleep_seconds: 0.005
+  camera_drop_sleep_seconds: 0.05
