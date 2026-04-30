@@ -95,21 +95,38 @@ Example configuration:
 model:
   path: "path/to/best.engine"
   task: "detect"
-  format: "TensorRT engine"
-  input_size: 640
   confidence_threshold: 0.50
 ```
 
 Replace `path/to/best.engine` with the actual model path used on the Jetson device.
 
+For example:
+
+```yaml
+model:
+  path: "/home/jetson/FEMTO_1.0/models/best.engine"
+  task: "detect"
+  confidence_threshold: 0.50
+```
+
+The runtime loads this path through:
+
+```text
+scripts/run_system.py
+src/femto/config.py
+src/femto/app.py
+```
+
+The model path is no longer intended to be hardcoded directly inside the main runtime script.
+
 ---
 
 ## TensorRT Export Reference
 
-The TensorRT engine can be generated from a trained YOLO `.pt` model using the export script:
+The TensorRT engine can be generated from a trained YOLO `.pt` model using the export tool:
 
 ```text
-scripts/model_export.py
+tools/model_export.py
 ```
 
 Example export workflow:
@@ -141,6 +158,39 @@ model.export(
 
 After export, update `configs/system_config.yaml` with the actual `.engine` file path used on the Jetson device.
 
+When possible, export or rebuild the TensorRT engine on the target Jetson device to reduce compatibility problems between TensorRT, CUDA, JetPack, and the hardware environment.
+
+---
+
+## Recommended Local Model Placement
+
+A simple local deployment layout is:
+
+```text
+FEMTO_1.0/
+├── models/
+│   ├── best.engine
+│   └── README.md
+```
+
+Then configure:
+
+```yaml
+model:
+  path: "models/best.engine"
+  task: "detect"
+  confidence_threshold: 0.50
+```
+
+For automatic startup or deployment outside the repository root, absolute paths may be safer:
+
+```yaml
+model:
+  path: "/home/jetson/FEMTO_1.0/models/best.engine"
+  task: "detect"
+  confidence_threshold: 0.50
+```
+
 ---
 
 ## Notes
@@ -156,3 +206,12 @@ TensorRT .engine
 The `.pt` model is mainly used for training and export, while the `.engine` model is used for Jetson deployment.
 
 Actual model files should be generated or copied locally on the target Jetson device before running the system.
+
+Before running the system, confirm that:
+
+```text
+[ ] The TensorRT .engine file exists
+[ ] The path in configs/system_config.yaml points to the correct .engine file
+[ ] The engine was exported for a compatible Jetson / TensorRT / CUDA / JetPack environment
+[ ] The YOLO class names match configs/class_mapping.yaml
+```

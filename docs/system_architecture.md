@@ -2,7 +2,7 @@
 
 This document explains the system architecture of **Femto 1.0 — Edge AI Waste Classification System**.
 
-Femto 1.0 is designed as an end-to-end Edge AI system that combines computer vision, real-time inference, decision logic, physical actuation, voice feedback, and safe shutdown handling on NVIDIA Jetson Orin Nano.
+Femto 1.0 is designed as an end-to-end Edge AI system that combines computer vision, real-time inference, decision logic, physical actuation, voice feedback, YAML-based runtime configuration, and safe shutdown handling on NVIDIA Jetson Orin Nano.
 
 ---
 
@@ -22,7 +22,8 @@ The system includes the following main functions:
 - Servo-based physical sorting
 - Voice feedback for user interaction
 - Shutdown card detection for safe shutdown
-- Resource cleanup for camera, GPIO, servo, and audio components
+- Resource cleanup for camera, GPIO, servo, PWM, and audio components
+- YAML-based configuration for runtime settings
 
 ---
 
@@ -52,7 +53,7 @@ Voice Feedback / System Status
 
 ![System Flowchart](images/system_flowchart.png)
 
-The pipeline is designed to run locally on the edge device. The Jetson Orin Nano performs camera input processing, AI inference, decision logic, and hardware control without requiring cloud inference.
+The pipeline is designed to run locally on the edge device. The Jetson Orin Nano performs camera input processing, AI inference, decision logic, audio feedback, and hardware control without requiring cloud inference.
 
 ---
 
@@ -78,29 +79,150 @@ The Jetson Orin Nano acts as the central controller. It receives image data from
 
 ## 4. Software Architecture
 
-The software architecture is organized around the main runtime pipeline.
+The runtime software is organized into a simple modular structure.
 
-| Module | Function |
+```text
+scripts/run_system.py
+    ↓
+Load configs/system_config.yaml
+Load configs/class_mapping.yaml
+    ↓
+src/femto/app.py
+    ↓
+Initialize model, camera, audio, and servo controller
+    ↓
+Run motion-triggered inference loop
+    ↓
+Map YOLO class to waste category
+    ↓
+Confirm prediction using decision buffering
+    ↓
+Trigger servo sorting and voice feedback
+```
+
+The main runtime entry point is:
+
+```text
+scripts/run_system.py
+```
+
+The main application logic is implemented in:
+
+```text
+src/femto/app.py
+```
+
+Configuration loading and runtime settings are handled through:
+
+```text
+src/femto/config.py
+configs/system_config.yaml
+configs/class_mapping.yaml
+```
+
+The software architecture is currently separated into the following main files:
+
+| File | Function |
 |---|---|
-| Camera Capture | Reads frames from the CSI camera using a GStreamer pipeline |
-| Motion Detection | Detects frame movement before enabling YOLO inference |
-| YOLO Inference | Performs object detection using a TensorRT `.engine` model |
-| Class Mapping | Maps detected waste classes into sorting categories |
-| Decision Buffer | Confirms stable predictions before triggering sorting |
-| Servo Control | Controls rotation and tilt servos using PWM |
-| Voice Feedback | Plays category-specific audio messages |
-| Shutdown Detection | Detects a shutdown card and performs safe poweroff |
-| Resource Cleanup | Releases camera, GPIO, PWM, and audio resources |
+| `scripts/run_system.py` | Main runtime entry point. Loads YAML configuration files and starts the application |
+| `src/femto/app.py` | Main runtime application loop for camera capture, motion-triggered inference, shutdown card handling, decision buffering, audio feedback, and servo sorting |
+| `src/femto/config.py` | Loads and validates YAML configuration files |
+| `src/femto/class_mapper.py` | Maps YOLO class names to high-level waste categories |
+| `src/femto/servo_controller.py` | Controls the two-servo sorting mechanism using a non-blocking finite-state machine |
+| `configs/system_config.yaml` | Stores runtime settings such as model path, thresholds, camera settings, audio paths, servo pins, duty cycles, and timing values |
+| `configs/class_mapping.yaml` | Stores YOLO class-to-category mapping and special classes such as `shutdown_card` |
 
-The main runtime application is implemented in `scripts/main.py`.
+This structure separates the runtime entry point, configuration handling, class mapping, and servo control from the main application loop. It makes the project easier to maintain compared with a single-script runtime structure.
 
 ---
 
-## 5. Camera and Motion Detection
+## 5. Runtime Entry Point
+
+The runtime starts from:
+
+```text
+scripts/run_system.py
+```
+
+This file has a small responsibility:
+
+```text
+1. Locate the project root
+2. Add src/ to the Python import path
+3. Load configs/system_config.yaml
+4. Load configs/class_mapping.yaml
+5. Create FemtoApp
+6. Start the application runtime
+```
+
+The entry point does not contain the main camera loop, YOLO logic, servo logic, or shutdown logic. Those responsibilities are handled inside the runtime modules under `src/femto/`.
+
+This design keeps the startup script simple and makes the main application behavior easier to locate.
+
+---
+
+## 6. Configuration Architecture
+
+Femto 1.0 uses YAML configuration files to separate runtime parameters from source code.
+
+The main configuration files are:
+
+```text
+configs/system_config.yaml
+configs/class_mapping.yaml
+```
+
+### system_config.yaml
+
+`configs/system_config.yaml` stores system-level runtime settings.
+
+It controls values such as:
+
+```text
+Model path
+YOLO task type
+YOLO confidence threshold
+Camera sensor ID
+Camera resolution
+Motion detection threshold
+YOLO wake duration
+Decision buffer size
+Sorting cooldown delay
+Shutdown card confidence threshold
+Shutdown buffer size
+Audio file paths
+Servo pin numbers
+Servo PWM frequency
+Servo home position
+Servo category positions
+Servo movement timing
+Runtime loop delay
+```
+
+This allows the system behavior to be adjusted without modifying Python source code.
+
+### class_mapping.yaml
+
+`configs/class_mapping.yaml` stores the mapping between YOLO class names and high-level waste categories.
+
+Example:
+
+```text
+plastic_bottle → Recycle Waste
+can            → Recycle Waste
+battery        → Hazardous Waste
+shutdown_card  → shutdown special class
+```
+
+This file separates model class names from sorting category logic. If a new class is added later, the mapping can be updated in the YAML file instead of editing the runtime code.
+
+---
+
+## 7. Camera and Motion Detection
 
 The system uses a CSI camera as the input source. The camera is opened through a GStreamer pipeline to support Jetson camera input and hardware-accelerated video handling.
 
-Motion detection is used before running YOLO inference. Instead of running the object detection model continuously, the system first checks whether there is movement in the camera frame.
+Motion detection is used before running YOLO inference. Instead of running the object detection model continuously, the system first checks whether there is enough movement in the camera frame.
 
 The motion detection process follows this logic:
 
@@ -122,9 +244,15 @@ Wake YOLO if Motion Exceeds Threshold
 
 This design reduces unnecessary YOLO inference when no waste item is present in front of the camera. It also helps make the runtime loop more efficient on edge hardware.
 
+The motion threshold, frame difference threshold, blur kernel size, and YOLO wake duration are configured in:
+
+```text
+configs/system_config.yaml
+```
+
 ---
 
-## 6. YOLO TensorRT Inference
+## 8. YOLO TensorRT Inference
 
 During development and training, the YOLO model is used in `.pt` format. For deployment on NVIDIA Jetson Orin Nano, the trained model is converted into TensorRT `.engine` format.
 
@@ -142,13 +270,17 @@ Jetson Orin Nano Runtime Inference
 
 ![Detection Example](images/detection_example.png)
 
-At runtime, each active frame is passed to the YOLO model. The model returns detected objects, class names, and confidence scores. The system then uses these results for waste category mapping and sorting decisions.
+At runtime, each active frame is passed to the YOLO model. The model returns detected objects, class names, and confidence scores. The system then uses these results for shutdown detection, waste category mapping, and sorting decisions.
 
-The confidence threshold is configured in `configs/system_config.yaml`.
+The model path and confidence threshold are configured in:
+
+```text
+configs/system_config.yaml
+```
 
 ---
 
-## 7. Waste Class Mapping
+## 9. Waste Class Mapping
 
 The YOLO model detects 10 waste classes. These classes are mapped into 4 main waste categories for sorting.
 
@@ -165,6 +297,12 @@ The class mapping is defined in:
 configs/class_mapping.yaml
 ```
 
+The mapping is loaded by:
+
+```text
+src/femto/class_mapper.py
+```
+
 The system also includes a special class:
 
 ```text
@@ -175,7 +313,7 @@ The `shutdown_card` class is used only for safe system shutdown and is not count
 
 ---
 
-## 8. Decision Buffering Logic
+## 10. Decision Buffering Logic
 
 The system does not immediately trigger sorting from a single-frame prediction. Instead, it uses a consecutive detection buffer to confirm that the detected class is stable.
 
@@ -201,9 +339,15 @@ If multiple objects are detected in the same frame, the system resets the curren
 
 After a sorting action is triggered, the system enters a short cooldown period before accepting the next sorting decision.
 
+The decision buffer size and cooldown delay are configured in:
+
+```text
+configs/system_config.yaml
+```
+
 ---
 
-## 9. Servo-Based Sorting Mechanism
+## 11. Servo-Based Sorting Mechanism
 
 The physical sorting mechanism uses two servo motors controlled through PWM signals.
 
@@ -214,7 +358,21 @@ The physical sorting mechanism uses two servo motors controlled through PWM sign
 
 The rotation servo on pin 32 is responsible for selecting the target bin direction. The tilt servo on pin 33 is responsible for releasing the waste item after the mechanism has rotated into position.
 
-### Servo PWM Design
+Servo pin numbers, PWM frequency, home position, category positions, and timing values are configured in:
+
+```text
+configs/system_config.yaml
+```
+
+The servo control implementation is handled by:
+
+```text
+src/femto/servo_controller.py
+```
+
+---
+
+## 12. Servo PWM Design
 
 The rotation servo on pin 32 releases its PWM signal after movement. This design was used because holding the PWM signal continuously caused mechanical vibration and servo jitter during testing.
 
@@ -224,9 +382,9 @@ This design acts as a simple jitter mitigation strategy for the rotation mechani
 
 ---
 
-## 10. Servo Movement Sequence
+## 13. Servo Movement Sequence
 
-The servo movement is handled as an asynchronous sequence rather than a single blocking action.
+The servo movement is handled as an asynchronous finite-state sequence rather than a single blocking action.
 
 The movement cycle is:
 
@@ -238,7 +396,7 @@ The movement cycle is:
 5. Release PWM on the rotation servo to reduce jitter
 ```
 
-This sequence allows the main loop to continue updating the system while the servo movement is in progress.
+This sequence allows the main runtime loop to continue updating the system while the servo movement is in progress.
 
 The servo duty cycles are mapped by waste category. Example categories include:
 
@@ -249,11 +407,15 @@ Organic Waste
 Hazardous Waste
 ```
 
-The servo timing and duty-cycle mapping are configured in `configs/system_config.yaml`.
+The servo timing and duty-cycle mapping are configured in:
+
+```text
+configs/system_config.yaml
+```
 
 ---
 
-## 11. Voice Feedback System
+## 14. Voice Feedback System
 
 The system includes audio feedback to communicate with the user during operation.
 
@@ -274,11 +436,15 @@ Each waste category has a corresponding audio message:
 
 The audio system improves user interaction by making the system response easier to understand during real-time operation.
 
-Audio file paths are configured in `configs/system_config.yaml`.
+Audio file paths are configured in:
+
+```text
+configs/system_config.yaml
+```
 
 ---
 
-## 12. Shutdown Card Detection
+## 15. Shutdown Card Detection
 
 The system includes a shutdown card detection function for safe shutdown operation.
 
@@ -302,11 +468,15 @@ Execute System Poweroff
 
 This approach helps reduce the risk of file corruption or hardware issues caused by directly disconnecting power.
 
-The shutdown card confidence threshold, buffer size, and delay are configured in `configs/system_config.yaml`.
+The shutdown card confidence threshold, buffer size, delay, and shutdown sound path are configured in:
+
+```text
+configs/system_config.yaml
+```
 
 ---
 
-## 13. Resource Cleanup and Safety
+## 16. Resource Cleanup and Safety
 
 The system includes cleanup logic to safely release hardware and software resources when the program exits.
 
@@ -323,7 +493,37 @@ This is important for embedded hardware systems because unreleased GPIO or PWM r
 
 ---
 
-## 14. Design Considerations
+## 17. Current Module Boundaries
+
+The current refactor separates the runtime into a small number of clear modules.
+
+| Module | Responsibility |
+|---|---|
+| `scripts/run_system.py` | Runtime entry point |
+| `src/femto/config.py` | YAML loading and validation |
+| `src/femto/class_mapper.py` | Waste class-to-category mapping |
+| `src/femto/servo_controller.py` | Servo PWM wrapper and non-blocking servo FSM |
+| `src/femto/app.py` | Main runtime loop and integration logic |
+
+Some runtime responsibilities are still integrated inside `src/femto/app.py`, including camera initialization, YOLO model initialization, motion detection, audio initialization, shutdown handling, and cleanup.
+
+This is intentional for the current stage of the project. The system has already been improved from a single-script runtime structure while avoiding an overly large refactor in one step.
+
+Future module separation may include:
+
+```text
+camera.py
+detector.py
+motion_detector.py
+audio_player.py
+decision_buffer.py
+shutdown_handler.py
+resource_manager.py
+```
+
+---
+
+## 18. Design Considerations
 
 Several design decisions were made to improve system stability and make the system more suitable for edge deployment.
 
@@ -333,6 +533,8 @@ Several design decisions were made to improve system stability and make the syst
 | Motion-triggered inference | Reduces unnecessary YOLO processing when no object is present |
 | Consecutive detection buffering | Reduces unstable predictions and false sorting actions |
 | Single-object decision rule | Avoids sorting when the scene contains multiple detected objects |
+| YAML-based configuration | Allows runtime settings to be changed without editing source code |
+| Non-blocking servo FSM | Allows the main runtime loop to continue while servo movement is in progress |
 | PWM release on rotation servo | Reduces mechanical jitter from the rotation mechanism |
 | Shutdown card detection | Allows safe shutdown without directly cutting power |
 | Resource cleanup | Prevents camera, GPIO, PWM, and audio resource issues |

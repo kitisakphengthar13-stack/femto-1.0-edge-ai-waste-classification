@@ -4,6 +4,8 @@ This document summarizes the real system test results of **Femto 1.0 — Edge AI
 
 The software and hardware results in this document are based on tests from the actual deployed prototype across all 10 waste classes.
 
+The current repository structure has been refactored into a clearer runtime layout using `scripts/`, `src/femto/`, `configs/`, and `tools/`. The reported results below represent the measured behavior of the working prototype and should be treated as system-level prototype results, not newly re-measured results after every code-structure change.
+
 ---
 
 ## 1. Overview
@@ -27,7 +29,37 @@ The average hardware sorting time is the average time across all 10 waste classe
 
 ---
 
-## 2. Software Performance
+## 2. Result Scope
+
+The values in this document represent **system-level test results** from the deployed prototype.
+
+They include the practical behavior of the running system, such as:
+
+- Camera input behavior
+- YOLO inference result used by the runtime system
+- Waste class-to-category mapping
+- Decision buffering behavior
+- Physical sorting behavior
+- Servo movement timing
+- Jetson runtime operation
+
+These results should not be interpreted as pure model validation metrics.
+
+They are different from metrics such as:
+
+```text
+mAP
+Precision
+Recall
+F1-score
+Validation accuracy from a training dataset
+```
+
+The purpose of this result document is to show how the full deployed prototype performed as an integrated Edge AI system.
+
+---
+
+## 3. Software Performance
 
 The software performance test measures the system-level classification accuracy of the deployed system during real operation across the 10 waste classes.
 
@@ -64,7 +96,7 @@ The lowest-performing class was `Plastic Bag`, with 74% accuracy. This suggests 
 
 ---
 
-## 3. Hardware Sorting Performance
+## 4. Hardware Sorting Performance
 
 The hardware performance test measures the real physical sorting time required for the mechanism to convey and sort each waste item into the target bin.
 
@@ -93,7 +125,7 @@ Most classes were sorted under or near the 2.00-second target line.
 
 ---
 
-## 4. TensorRT Inference Runtime
+## 5. TensorRT Inference Runtime
 
 The trained YOLO model was converted from `.pt` format to TensorRT `.engine` format for deployment on NVIDIA Jetson Orin Nano.
 
@@ -113,7 +145,7 @@ These values help identify where runtime latency occurs during real-time operati
 
 ---
 
-## 5. Jetson Runtime Monitoring
+## 6. Jetson Runtime Monitoring
 
 Jetson runtime behavior was monitored using `jtop` during system operation.
 
@@ -134,7 +166,48 @@ This evidence supports that the system was deployed and tested on actual edge ha
 
 ---
 
-## 6. Result Summary
+## 7. Runtime Refactor Note
+
+The latest repository structure separates the runtime into clearer components:
+
+```text
+scripts/run_system.py
+src/femto/app.py
+src/femto/config.py
+src/femto/class_mapper.py
+src/femto/servo_controller.py
+configs/system_config.yaml
+configs/class_mapping.yaml
+tools/
+```
+
+This refactor improves code organization and makes runtime settings configurable through YAML files.
+
+The refactor is intended to preserve the same core runtime behavior:
+
+```text
+Camera input
+    ↓
+Motion-triggered YOLO inference
+    ↓
+Single-object decision rule
+    ↓
+Consecutive detection buffering
+    ↓
+Class-to-category mapping
+    ↓
+Servo-based sorting
+    ↓
+Voice feedback
+    ↓
+Shutdown card handling
+```
+
+If new measurements are collected after further code or hardware changes, this document should be updated with the new test date, configuration, and measured results.
+
+---
+
+## 8. Result Summary
 
 | Evaluation Area | Result |
 |---|---|
@@ -153,7 +226,7 @@ The system demonstrates a complete camera-to-actuator pipeline, where the AI pre
 
 ---
 
-## 7. Limitations
+## 9. Limitations
 
 Although the system achieved stable overall performance, several limitations remain.
 
@@ -170,7 +243,7 @@ The current decision logic intentionally rejects multiple detected objects in th
 
 ---
 
-## 8. Future Improvements
+## 10. Future Improvements
 
 Future improvements may include:
 
@@ -182,10 +255,12 @@ Future improvements may include:
 - Testing with more real-world waste samples
 - Adding more sensors to support physical sorting reliability
 - Optimizing TensorRT inference and camera pipeline performance further
+- Re-testing the full system after major software or hardware changes
+- Recording updated benchmark results after each major deployment revision
 
 ---
 
-## 9. Conclusion
+## 11. Conclusion
 
 Femto 1.0 demonstrates a practical Edge AI waste classification and sorting system using YOLO, TensorRT, NVIDIA Jetson Orin Nano, CSI camera input, and servo-based actuation.
 
