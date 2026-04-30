@@ -105,11 +105,13 @@ Main runtime responsibilities are separated as follows:
 | File | Purpose |
 |---|---|
 | `scripts/run_system.py` | Main runtime entry point. Loads YAML configuration files and starts the FEMTO application |
-| `src/femto/app.py` | Main application loop for camera capture, motion detection, YOLO inference, shutdown handling, decision buffering, audio feedback, and servo sorting |
-| `src/femto/config.py` | Loads and validates YAML configuration files |
+| `src/femto/app.py` | Main runtime application loop for camera capture, motion-triggered inference, shutdown card handling, decision buffering, audio feedback, and servo sorting |
+| `src/femto/config.py` | YAML configuration loader and validator |
 | `src/femto/class_mapper.py` | Maps YOLO class names to waste categories using `configs/class_mapping.yaml` |
-| `src/femto/servo_controller.py` | Controls the two-servo sorting mechanism using a non-blocking finite-state machine |
-| `tools/` | Development utilities such as model training, model export, and servo calibration |
+| `src/femto/servo_controller.py` | Servo PWM wrapper and non-blocking servo finite-state controller |
+| `tools/calibrate_servo_angle.py` | Utility script for testing and calibrating servo angles before running the full sorting system |
+| `tools/model_training.py` | Utility script for training the YOLO waste classification/detection model |
+| `tools/model_export.py` | Utility script for exporting the trained YOLO model to TensorRT engine format for Jetson deployment |
 
 ---
 

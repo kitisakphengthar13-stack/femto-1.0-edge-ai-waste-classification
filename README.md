@@ -238,6 +238,9 @@ FEMTO_1.0/
 │       └── servo_controller.py
 │
 ├── tools/
+│   ├── calibrate_servo_angle.py
+│   ├── model_export.py
+│   └── model_training.py
 │
 ├── .gitignore
 ├── README.md
@@ -257,7 +260,9 @@ FEMTO_1.0/
 | `src/femto/servo_controller.py` | Servo PWM wrapper and non-blocking servo finite-state controller |
 | `configs/class_mapping.yaml` | Waste class-to-category mapping |
 | `configs/system_config.yaml` | System paths, thresholds, servo settings, audio settings, camera settings, and runtime settings |
-| `tools/` | Utility scripts for development tasks such as model training, model export, and servo calibration |
+| `tools/calibrate_servo_angle.py` | Utility script for testing and calibrating servo angles before running the full sorting system |
+| `tools/model_training.py` | Utility script for training the YOLO waste classification/detection model |
+| `tools/model_export.py` | Utility script for exporting the trained YOLO model to TensorRT engine format for Jetson deployment |
 | `docs/system_architecture.md` | System architecture details |
 | `docs/results.md` | Performance results |
 | `docs/deployment.md` | Jetson deployment guide |

@@ -178,7 +178,9 @@ src/femto/class_mapper.py
 src/femto/servo_controller.py
 configs/system_config.yaml
 configs/class_mapping.yaml
-tools/
+tools/calibrate_servo_angle.py
+tools/model_export.py
+tools/model_training.py
 ```
 
 This refactor improves code organization and makes runtime settings configurable through YAML files.

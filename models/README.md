@@ -121,6 +121,80 @@ The model path is no longer intended to be hardcoded directly inside the main ru
 
 ---
 
+## Model Training Reference
+
+The YOLO `.pt` model can be trained during the development stage using:
+
+```text
+tools/model_training.py
+```
+
+This script is used to train the waste detection model before exporting it to TensorRT `.engine` format for Jetson deployment.
+
+Example training logic:
+
+```python
+from multiprocessing import freeze_support
+from ultralytics import YOLO
+
+if __name__ == "__main__":
+    freeze_support()
+
+    # -------------------------
+    # Base model
+    # -------------------------
+    model = YOLO("path/to/yolo26s.pt")
+
+    # -------------------------
+    # Training parameters
+    # -------------------------
+    data_yaml = "path/to/data.yaml"
+    epochs = 250
+    imgsz = 640
+    batch_size = 9
+    workers = 2
+    project = "model_result"
+    name = "model_name"
+
+    model.train(
+        data=data_yaml,
+        epochs=epochs,
+        imgsz=imgsz,
+        batch=batch_size,
+        workers=workers,
+        optimizer="auto",
+
+        # Use default augmentation to improve model generalization
+        augment=True,
+
+        project=project,
+        name=name,
+        exist_ok=True,
+    )
+```
+
+The main configurable training parameters are:
+
+| Parameter | Description |
+|---|---|
+| `model` | Base YOLO model used for training |
+| `data_yaml` | Dataset configuration file for YOLO training |
+| `epochs` | Number of training epochs |
+| `imgsz` | Input image size used during training |
+| `batch_size` | Training batch size |
+| `workers` | Number of data loading workers |
+| `project` | Output directory for training results |
+| `name` | Name of the training run |
+| `augment` | Enables YOLO training augmentation |
+
+After training, the best model checkpoint is typically saved under the training output directory. The resulting `.pt` model can then be exported to TensorRT `.engine` format using:
+
+```text
+tools/model_export.py
+```
+
+---
+
 ## TensorRT Export Reference
 
 The TensorRT engine can be generated from a trained YOLO `.pt` model using the export tool:
