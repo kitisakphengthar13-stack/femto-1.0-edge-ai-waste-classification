@@ -3,6 +3,12 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
 
 # Virtual environments
 .venv/
@@ -27,6 +33,13 @@ results/
 outputs/
 logs/
 *.log
+*.tmp
+*.bak
+
+# Build / packaging outputs
+build/
+dist/
+*.egg-info/
 
 # Model files
 *.pt
@@ -43,6 +56,7 @@ models/*
 # Audio files
 sound/
 sounds/
+audio/
 *.mp3
 *.wav
 
@@ -57,3 +71,7 @@ sounds/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local-only configuration overrides
+configs/*.local.yaml
+configs/*.local.yml

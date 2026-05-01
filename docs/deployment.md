@@ -68,6 +68,8 @@ The repository does not include actual model files, TensorRT engine files, datas
 
 Model and audio paths shown in the configuration file are placeholder paths and should be replaced with the actual paths used on the Jetson device.
 
+`configs/system_config.yaml` is the active runtime configuration loaded by `scripts/run_system.py`. `configs/system_config.example.yaml` is a reference template for the same schema and is not loaded automatically.
+
 Repository files such as configuration files are referenced from the project root:
 
 ```text
@@ -304,7 +306,7 @@ The model detects 10 waste classes and maps them into 4 waste categories:
 
 | Category | Classes |
 |---|---|
-| Recyclable Waste | `plastic_bottle`, `can`, `paper` |
+| Recycle Waste | `plastic_bottle`, `can`, `paper` |
 | General Waste | `plastic_bag`, `instant_noodle`, `mask` |
 | Organic Waste | `banana`, `apple`, `orange` |
 | Hazardous Waste | `battery` |
@@ -473,6 +475,14 @@ shutdown:
 ---
 
 ## 11. Running the System
+
+Before starting the hardware runtime, run the hardware-free preflight checker from the repository root:
+
+```bash
+python tools/preflight_check.py
+```
+
+The preflight checker reads `configs/system_config.yaml` and `configs/class_mapping.yaml`, detects placeholder or missing model/audio paths, and verifies category consistency across class mapping, servo positions, and audio entries. It does not import `Jetson.GPIO`, open the camera, load the YOLO model, play audio, move servos, execute shutdown, or modify files.
 
 The main runtime entry point is:
 

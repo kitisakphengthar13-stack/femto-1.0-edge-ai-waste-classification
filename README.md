@@ -24,7 +24,7 @@ YouTube Demo: [Watch the demo](https://www.youtube.com/watch?v=EHQ0HLIj6ms)
 The model was trained using a custom dataset containing 10 waste classes.  
 These classes are mapped into 4 main waste categories used by the sorting system:
 
-- Recyclable waste
+- Recycle Waste
 - General waste
 - Organic waste
 - Hazardous waste
@@ -157,9 +157,9 @@ Servo pin numbers, PWM frequency, home position, category positions, and timing 
 
 | Waste Class | Category |
 |---|---|
-| Plastic Bottle | Recyclable Waste |
-| Can | Recyclable Waste |
-| Paper | Recyclable Waste |
+| Plastic Bottle | Recycle Waste |
+| Can | Recycle Waste |
+| Paper | Recycle Waste |
 | Plastic Bag | General Waste |
 | Instant Noodle | General Waste |
 | Face Mask | General Waste |
@@ -181,10 +181,13 @@ Femto 1.0 uses YAML configuration files to separate runtime settings from source
 
 | File | Purpose |
 |---|---|
-| `configs/system_config.yaml` | Model path, confidence threshold, camera settings, motion settings, decision buffer, shutdown settings, audio paths, servo pins, servo duty cycles, and runtime delays |
+| `configs/system_config.yaml` | Active runtime config for model path, confidence threshold, camera settings, motion settings, decision buffer, shutdown settings, audio paths, servo pins, servo duty cycles, and runtime delays |
+| `configs/system_config.example.yaml` | Reference template for the active system config schema. This file is not loaded by the runtime |
 | `configs/class_mapping.yaml` | YOLO waste class names mapped to high-level waste categories, plus special classes such as `shutdown_card` |
 
 This makes the system easier to adjust without modifying the Python source code.
+
+The active runtime category label is currently `Recycle Waste`. Some earlier prose may use the human-readable wording "recyclable waste"; do not rename the runtime category without updating config keys, audio assets, result documentation, and hardware deployment together.
 
 Examples of values controlled by configuration:
 
@@ -263,6 +266,10 @@ FEMTO_1.0/
 | `tools/calibrate_servo_angle.py` | Utility script for testing and calibrating servo angles before running the full sorting system |
 | `tools/model_training.py` | Utility script for training the YOLO waste classification/detection model |
 | `tools/model_export.py` | Utility script for exporting the trained YOLO model to TensorRT engine format for Jetson deployment |
+| `tools/preflight_check.py` | Hardware-free config and path validation tool |
+| `docs/configuration.md` | Configuration reference and category naming notes |
+| `docs/development.md` | Hardware-free development checks and test instructions |
+| `docs/project_structure.md` | Standard repository layout reference |
 | `docs/system_architecture.md` | System architecture details |
 | `docs/results.md` | Performance results |
 | `docs/deployment.md` | Jetson deployment guide |
@@ -271,6 +278,14 @@ FEMTO_1.0/
 ---
 
 ## How to Run
+
+Before starting the hardware runtime, run the preflight checker from the repository root:
+
+```bash
+python tools/preflight_check.py
+```
+
+The preflight checker reads `configs/system_config.yaml` and `configs/class_mapping.yaml`, checks required config keys, detects placeholder or missing model/audio paths, and verifies that mapped waste categories have matching servo and audio entries. It does not import Jetson.GPIO, open the camera, load the YOLO model, play audio, move servos, or modify any files, so it is safe to run on a non-Jetson development machine.
 
 Run the main system from the repository root:
 
@@ -296,6 +311,16 @@ Servo duty cycle values
 Motion detection threshold
 Shutdown card settings
 ```
+
+For hardware-free development checks:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+python -m compileall tools tests src/femto/class_mapper.py src/femto/config.py
+```
+
+These checks do not replace real Jetson validation. They intentionally avoid loading `src/femto/app.py`, opening the camera, importing `Jetson.GPIO`, moving servos, loading the YOLO model, playing audio, or executing shutdown behavior.
 
 ---
 

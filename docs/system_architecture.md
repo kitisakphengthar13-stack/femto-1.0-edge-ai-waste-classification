@@ -286,7 +286,7 @@ The YOLO model detects 10 waste classes. These classes are mapped into 4 main wa
 
 | Waste Category | Classes |
 |---|---|
-| Recyclable Waste | `plastic_bottle`, `can`, `paper` |
+| Recycle Waste | `plastic_bottle`, `can`, `paper` |
 | General Waste | `plastic_bag`, `instant_noodle`, `mask` |
 | Organic Waste | `banana`, `apple`, `orange` |
 | Hazardous Waste | `battery` |
@@ -406,6 +406,8 @@ General Waste
 Organic Waste
 Hazardous Waste
 ```
+
+The active runtime category string is `Recycle Waste`. This string must match `configs/class_mapping.yaml`, `audio.category_sounds`, and `servo.category_positions`.
 
 The servo timing and duty-cycle mapping are configured in:
 
