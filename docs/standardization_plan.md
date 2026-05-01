@@ -44,7 +44,7 @@ This document records the conservative repository-standardization pass. It separ
 - Renaming `Recycle Waste` to `Recyclable Waste` or another canonical label.
 - Moving `Jetson.GPIO` behind an adapter.
 - Adding camera source modes or changing pipeline generation.
-- Extracting `src/femto/app.py` into camera, detector, audio, motion, decision, shutdown, and resource modules.
+- Extracting remaining side-effect boundaries from `src/femto/app.py`, such as camera, detector, audio, OS shutdown execution, and resource modules. Pure motion detection, waste decision buffering, and shutdown-card confirmation have already been extracted in Phase 2A.
 - Changing shutdown behavior or adding a default dry-run mode.
 - Changing servo calibration values or timing.
 - Converting the repository into an installable Python package.

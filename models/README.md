@@ -123,13 +123,13 @@ The model path is no longer intended to be hardcoded directly inside the main ru
 
 ## Model Training Reference
 
-The YOLO `.pt` model can be trained during the development stage using:
+The repository includes an example training script at:
 
 ```text
 tools/model_training.py
 ```
 
-This script is used to train the waste detection model before exporting it to TensorRT `.engine` format for Jetson deployment.
+The current script contains placeholder and hardcoded paths such as `path/to/yolo26s.pt` and `path/to/data.yaml`. It must be edited for the local dataset/model paths or converted to CLI arguments before use; it is not plug-and-play.
 
 Example training logic:
 
@@ -187,7 +187,7 @@ The main configurable training parameters are:
 | `name` | Name of the training run |
 | `augment` | Enables YOLO training augmentation |
 
-After training, the best model checkpoint is typically saved under the training output directory. The resulting `.pt` model can then be exported to TensorRT `.engine` format using:
+After training, the best model checkpoint is typically saved under the training output directory. The resulting `.pt` model can then be exported to TensorRT `.engine` format with the example export script:
 
 ```text
 tools/model_export.py
@@ -197,7 +197,7 @@ tools/model_export.py
 
 ## TensorRT Export Reference
 
-The TensorRT engine can be generated from a trained YOLO `.pt` model using the export tool:
+The repository includes an example export script at:
 
 ```text
 tools/model_export.py
@@ -233,6 +233,8 @@ model.export(
 After export, update `configs/system_config.yaml` with the actual `.engine` file path used on the Jetson device.
 
 When possible, export or rebuild the TensorRT engine on the target Jetson device to reduce compatibility problems between TensorRT, CUDA, JetPack, and the hardware environment.
+
+The current `tools/model_export.py` script contains a placeholder path such as `path/to/best.pt`. Edit it for the local trained checkpoint path or convert it to CLI arguments before use; it is not plug-and-play.
 
 ---
 

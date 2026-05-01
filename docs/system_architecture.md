@@ -128,11 +128,14 @@ The software architecture is currently separated into the following main files:
 | `src/femto/app.py` | Main runtime application loop for camera capture, motion-triggered inference, shutdown card handling, decision buffering, audio feedback, and servo sorting |
 | `src/femto/config.py` | Loads and validates YAML configuration files |
 | `src/femto/class_mapper.py` | Maps YOLO class names to high-level waste categories |
+| `src/femto/motion_detector.py` | Contains hardware-free frame-difference motion detection logic |
+| `src/femto/decision_buffer.py` | Contains hardware-free waste decision buffering and single-object decision logic |
+| `src/femto/shutdown_detection.py` | Contains hardware-free shutdown-card confirmation buffering |
 | `src/femto/servo_controller.py` | Controls the two-servo sorting mechanism using a non-blocking finite-state machine |
 | `configs/system_config.yaml` | Stores runtime settings such as model path, thresholds, camera settings, audio paths, servo pins, duty cycles, and timing values |
 | `configs/class_mapping.yaml` | Stores YOLO class-to-category mapping and special classes such as `shutdown_card` |
 
-This structure separates the runtime entry point, configuration handling, class mapping, and servo control from the main application loop. It makes the project easier to maintain compared with a single-script runtime structure.
+This structure separates the runtime entry point, configuration handling, class mapping, pure motion detection, pure decision buffering, pure shutdown-card confirmation, and servo control from the main application loop. It makes the project easier to maintain compared with a single-script runtime structure.
 
 ---
 
@@ -431,7 +434,7 @@ Each waste category has a corresponding audio message:
 
 | Waste Category | Audio Feedback |
 |---|---|
-| Recycle Waste | Recyclable waste notification |
+| Recycle Waste | Recycle Waste notification |
 | General Waste | General waste notification |
 | Organic Waste | Organic waste notification |
 | Hazardous Waste | Hazardous waste notification |
@@ -504,10 +507,13 @@ The current refactor separates the runtime into a small number of clear modules.
 | `scripts/run_system.py` | Runtime entry point |
 | `src/femto/config.py` | YAML loading and validation |
 | `src/femto/class_mapper.py` | Waste class-to-category mapping |
+| `src/femto/motion_detector.py` | Hardware-free frame-difference motion detection |
+| `src/femto/decision_buffer.py` | Hardware-free waste decision buffering |
+| `src/femto/shutdown_detection.py` | Hardware-free shutdown-card confirmation |
 | `src/femto/servo_controller.py` | Servo PWM wrapper and non-blocking servo FSM |
 | `src/femto/app.py` | Main runtime loop and integration logic |
 
-Some runtime responsibilities are still integrated inside `src/femto/app.py`, including camera initialization, YOLO model initialization, motion detection, audio initialization, shutdown handling, and cleanup.
+Some runtime responsibilities are still integrated inside `src/femto/app.py`. The app still owns camera initialization, YOLO model initialization and invocation, audio initialization and playback, servo orchestration, GPIO cleanup, signal handling, and OS shutdown execution. Pure motion detection, waste decision buffering, and shutdown-card confirmation now live in hardware-free modules.
 
 This is intentional for the current stage of the project. The system has already been improved from a single-script runtime structure while avoiding an overly large refactor in one step.
 
@@ -516,12 +522,12 @@ Future module separation may include:
 ```text
 camera.py
 detector.py
-motion_detector.py
 audio_player.py
-decision_buffer.py
 shutdown_handler.py
 resource_manager.py
 ```
+
+In this list, `shutdown_handler.py` refers to a possible future side-effect boundary for OS shutdown execution. The pure shutdown-card confirmation buffer already exists in `src/femto/shutdown_detection.py`.
 
 ---
 

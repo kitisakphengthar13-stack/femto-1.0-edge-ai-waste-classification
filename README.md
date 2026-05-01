@@ -56,10 +56,10 @@ The main entry point loads YAML configuration files, starts the FEMTO applicatio
 | Deployment device | NVIDIA Jetson Orin Nano |
 | Deployment model format | TensorRT `.engine` |
 
-The software accuracy value represents the overall average accuracy across all 10 waste classes from real system testing.  
-The hardware sorting time represents the overall average time required to convey and sort one waste item into the target bin across all 10 classes from real physical sorting tests.
+The software accuracy value is a reported prototype result for the overall average accuracy across all 10 waste classes.  
+The hardware sorting time is a reported prototype result for the overall average time required to convey and sort one waste item into the target bin across all 10 classes.
 
-These values are system-level test results from the actual prototype, not YOLO validation metrics such as mAP, precision, or recall.
+These values are documented by the included result images and are system-level prototype results, not YOLO validation metrics such as mAP, precision, or recall. They are not independently reproducible from this repository alone because the model artifact, audio assets, deployment environment, and result manifest are not included.
 
 ---
 
@@ -209,45 +209,54 @@ Runtime loop delay
 
 ```text
 FEMTO_1.0/
-├── configs/
-│   ├── class_mapping.yaml
-│   └── system_config.yaml
-│
-├── docs/
-│   ├── images/
-│   │   ├── detection_example.png
-│   │   ├── hardware_performance.png
-│   │   ├── jtop.png
-│   │   ├── prototype_overview.png
-│   │   ├── software_performance.png
-│   │   ├── system_flowchart.png
-│   │   └── yolo_verbose.png
-│   ├── deployment.md
-│   ├── results.md
-│   └── system_architecture.md
-│
-├── models/
-│   └── README.md
-│
-├── scripts/
-│   └── run_system.py
-│
-├── src/
-│   └── femto/
-│       ├── __init__.py
-│       ├── app.py
-│       ├── class_mapper.py
-│       ├── config.py
-│       └── servo_controller.py
-│
-├── tools/
-│   ├── calibrate_servo_angle.py
-│   ├── model_export.py
-│   └── model_training.py
-│
-├── .gitignore
-├── README.md
-└── requirements.txt
+|-- configs/
+|   |-- class_mapping.yaml
+|   |-- system_config.example.yaml
+|   `-- system_config.yaml
+|-- docs/
+|   |-- images/
+|   |-- configuration.md
+|   |-- deployment.md
+|   |-- development.md
+|   |-- hardware_validation_checklist.md
+|   |-- project_audit.md
+|   |-- project_structure.md
+|   |-- results.md
+|   |-- standardization_plan.md
+|   `-- system_architecture.md
+|-- models/
+|   `-- README.md
+|-- scripts/
+|   `-- run_system.py
+|-- src/
+|   `-- femto/
+|       |-- __init__.py
+|       |-- app.py
+|       |-- class_mapper.py
+|       |-- config.py
+|       |-- decision_buffer.py
+|       |-- motion_detector.py
+|       |-- servo_controller.py
+|       `-- shutdown_detection.py
+|-- tests/
+|   |-- conftest.py
+|   |-- test_class_mapper.py
+|   |-- test_config_validation.py
+|   |-- test_decision_buffer.py
+|   |-- test_motion_detector.py
+|   |-- test_preflight_check.py
+|   `-- test_shutdown_detection.py
+|-- tools/
+|   |-- calibrate_servo_angle.py
+|   |-- model_export.py
+|   |-- model_training.py
+|   `-- preflight_check.py
+|-- .gitattributes
+|-- .gitignore
+|-- pyproject.toml
+|-- README.md
+|-- requirements-dev.txt
+`-- requirements.txt
 ```
 
 ---
@@ -260,15 +269,20 @@ FEMTO_1.0/
 | `src/femto/app.py` | Main runtime application loop for camera capture, motion-triggered inference, shutdown card handling, decision buffering, audio feedback, and servo sorting |
 | `src/femto/config.py` | YAML configuration loader and validator |
 | `src/femto/class_mapper.py` | Maps YOLO class names to waste categories using `configs/class_mapping.yaml` |
+| `src/femto/motion_detector.py` | Hardware-free frame-difference motion detection logic |
+| `src/femto/decision_buffer.py` | Hardware-free waste decision buffering and single-object decision logic |
+| `src/femto/shutdown_detection.py` | Hardware-free shutdown-card confirmation buffer |
 | `src/femto/servo_controller.py` | Servo PWM wrapper and non-blocking servo finite-state controller |
 | `configs/class_mapping.yaml` | Waste class-to-category mapping |
 | `configs/system_config.yaml` | System paths, thresholds, servo settings, audio settings, camera settings, and runtime settings |
 | `tools/calibrate_servo_angle.py` | Utility script for testing and calibrating servo angles before running the full sorting system |
-| `tools/model_training.py` | Utility script for training the YOLO waste classification/detection model |
-| `tools/model_export.py` | Utility script for exporting the trained YOLO model to TensorRT engine format for Jetson deployment |
+| `tools/model_training.py` | Example training script with placeholder paths that must be edited or converted to CLI arguments before use |
+| `tools/model_export.py` | Example TensorRT export script with placeholder paths that must be edited or converted to CLI arguments before use |
 | `tools/preflight_check.py` | Hardware-free config and path validation tool |
+| `tests/` | Hardware-free tests for pure logic and validation helpers |
 | `docs/configuration.md` | Configuration reference and category naming notes |
 | `docs/development.md` | Hardware-free development checks and test instructions |
+| `docs/hardware_validation_checklist.md` | Jetson validation checklist for Phase 2A and runtime behavior |
 | `docs/project_structure.md` | Standard repository layout reference |
 | `docs/system_architecture.md` | System architecture details |
 | `docs/results.md` | Performance results |
@@ -317,7 +331,7 @@ For hardware-free development checks:
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest
-python -m compileall tools tests src/femto/class_mapper.py src/femto/config.py
+python -m compileall tools tests src/femto/class_mapper.py src/femto/config.py src/femto/motion_detector.py src/femto/decision_buffer.py src/femto/shutdown_detection.py
 ```
 
 These checks do not replace real Jetson validation. They intentionally avoid loading `src/femto/app.py`, opening the camera, importing `Jetson.GPIO`, moving servos, loading the YOLO model, playing audio, or executing shutdown behavior.
@@ -340,7 +354,7 @@ Real System Testing
 Real-Time Waste Sorting
 ```
 
-Training, export, and calibration scripts are placed under `tools/` because they are development utilities, not the main runtime entry point.
+Training, export, and calibration scripts are placed under `tools/` because they are development utilities, not the main runtime entry point. The training and export scripts currently contain placeholder paths and are examples, not plug-and-play commands.
 
 ---
 
@@ -368,12 +382,12 @@ The project includes performance images in `docs/images/`:
 - `prototype_overview.png` — physical prototype overview
 - `system_flowchart.png` — system operation flowchart
 - `detection_example.png` — YOLO detection example from the deployed system
-- `software_performance.png` — real system software accuracy results across 10 waste classes
-- `hardware_performance.png` — real physical sorting time results across 10 waste classes
+- `software_performance.png` — reported prototype software accuracy results across 10 waste classes
+- `hardware_performance.png` — reported prototype physical sorting time results across 10 waste classes
 - `yolo_verbose.png` — TensorRT inference runtime log
 - `jtop.png` — Jetson Orin Nano resource monitoring during operation
 
-These images are used to document the physical prototype, system workflow, software-level performance, hardware-level performance, and runtime behavior of the complete deployed prototype.
+These images document the physical prototype, system workflow, reported software-level performance, reported hardware-level performance, and runtime behavior of the prototype. A separate result manifest would be needed to make the benchmark claims independently reproducible.
 
 ---
 
@@ -383,9 +397,11 @@ This project is a practical prototype developed to demonstrate the application o
 
 The current version focuses on real-time object detection, Edge AI deployment, YAML-based runtime configuration, physical sorting control, user interaction through voice feedback, and safe shutdown operation.
 
-The runtime has been refactored from a single-script structure into a clearer modular structure using `scripts/`, `src/femto/`, `configs/`, and `tools/`.
+Repository standardization is complete for the current pass. The runtime has been refactored from a single-script structure into a clearer modular structure using `scripts/`, `src/femto/`, `configs/`, and `tools/`.
 
-Future improvements may include larger dataset collection, improved mechanical design, additional sensor integration, better handling of overlapping waste items, more robust performance under different lighting conditions, and further separation of runtime modules such as camera, detector, motion detector, audio player, decision buffer, and shutdown handler.
+Phase 2A pure-logic extraction is complete for motion detection, waste decision buffering, and shutdown-card confirmation. Full Jetson and hardware validation for this Phase 2A refactor is still pending; see `docs/hardware_validation_checklist.md`.
+
+Future improvements may include larger dataset collection, improved mechanical design, additional sensor integration, better handling of overlapping waste items, more robust performance under different lighting conditions, and further separation of runtime side-effect modules such as camera, detector, audio player, shutdown execution, and resource management.
 
 ---
 

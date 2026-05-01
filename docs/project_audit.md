@@ -6,6 +6,34 @@ Scope: repository structure, runtime code, configs, README, requirements, docs, 
 
 This audit is read-only with respect to existing files. No existing source code, configuration, or documentation was modified.
 
+Note: this audit predates the repository standardization pass and Phase 2A pure-logic extraction. It is retained as historical context. Current status updates are listed below so the original findings are not mistaken for the latest repository state.
+
+---
+
+## Current Status Update
+
+The following items have been completed after the original audit:
+
+- Added `requirements-dev.txt` for minimal hardware-free test tooling.
+- Added `pyproject.toml` with non-invasive tool configuration.
+- Added `configs/system_config.example.yaml` as a reference template matching the active config schema.
+- Added `tools/preflight_check.py` for hardware-free configuration and asset-path validation.
+- Added hardware-free tests under `tests/`.
+- Added `src/femto/motion_detector.py` for pure frame-difference motion detection.
+- Added `src/femto/decision_buffer.py` for pure waste decision buffering.
+- Added `src/femto/shutdown_detection.py` for pure shutdown-card confirmation.
+- Added `docs/hardware_validation_checklist.md` for target-device validation.
+
+Remaining current risks:
+
+- Full Jetson and hardware validation for Phase 2A is still pending.
+- `Jetson.GPIO` is still imported at runtime/module import boundaries in hardware-related code.
+- Camera, model, audio, GPIO, servo orchestration, cleanup, and OS shutdown side effects still remain in `src/femto/app.py` and related hardware modules.
+- Result images and benchmark numbers still do not have a machine-readable result manifest with test date, model artifact, config, JetPack, TensorRT, or sample-count metadata.
+- `tools/model_training.py` and `tools/model_export.py` still use placeholder paths and are example scripts, not plug-and-play CLIs.
+
+The original audit sections below should be read with this update in mind.
+
 ---
 
 ## Executive Summary
@@ -48,6 +76,9 @@ Current layout:
 | `src/femto/app.py` | Main runtime integration | Largest code file; owns too many runtime concerns. |
 | `src/femto/config.py` | YAML loading | Validates only top-level sections. |
 | `src/femto/class_mapper.py` | Class mapping | Small, clean responsibility. |
+| `src/femto/motion_detector.py` | Pure motion detection | Added after original audit as Phase 2A hardware-free logic. |
+| `src/femto/decision_buffer.py` | Pure waste decision buffering | Added after original audit as Phase 2A hardware-free logic. |
+| `src/femto/shutdown_detection.py` | Pure shutdown-card confirmation | Added after original audit as Phase 2A hardware-free logic. |
 | `src/femto/servo_controller.py` | Servo PWM and FSM | Good separation from app loop. |
 | `scripts/run_system.py` | Main entry point | Clean entry point, but uses direct `sys.path` manipulation. |
 | `tools/calibrate_servo_angle.py` | Calibration utility | Duplicates servo wrapper/config values instead of reusing runtime config. |
@@ -142,10 +173,12 @@ Any change to shutdown behavior should be approved and tested on the Jetson.
 
 #### 4. `src/femto/app.py` has too many responsibilities
 
+Current status note: Phase 2A has extracted pure motion detection, waste decision buffering, and shutdown-card confirmation. The remaining concern is the side-effect boundary: camera setup, YOLO initialization and invocation, audio, servo orchestration, GPIO cleanup, signal handling, and OS shutdown execution still remain in the runtime app or hardware-related modules.
+
 Evidence:
 
-- `src/femto/app.py` is 334 lines and owns model loading, camera setup, audio setup, motion detection, inference parsing, shutdown logic, decision buffering, servo orchestration, signal handling, and cleanup.
-- `docs/system_architecture.md` already identifies possible future modules: `camera.py`, `detector.py`, `motion_detector.py`, `audio_player.py`, `decision_buffer.py`, `shutdown_handler.py`, and `resource_manager.py`.
+- At original audit time, `src/femto/app.py` owned model loading, camera setup, audio setup, motion detection, inference parsing, shutdown logic, decision buffering, servo orchestration, signal handling, and cleanup.
+- Current `docs/system_architecture.md` identifies possible future side-effect modules such as `camera.py`, `detector.py`, `audio_player.py`, a shutdown execution boundary, and `resource_manager.py`.
 
 Impact:
 
@@ -153,8 +186,8 @@ The app class is understandable now, but future changes will raise regression ri
 
 Recommended fixes:
 
-- Extract pure logic first: `MotionDetector`, `DecisionBuffer`, and shutdown-card buffering.
-- Then extract side-effect boundaries: `Camera`, `Detector`, `AudioPlayer`, and `ShutdownHandler`.
+- Pure logic extraction for `MotionDetector`, `WasteDecisionBuffer`, and shutdown-card confirmation is complete.
+- Next extract side-effect boundaries such as `Camera`, `Detector`, `AudioPlayer`, and an OS shutdown handler, after hardware validation planning.
 - Keep `FemtoApp` as the orchestrator rather than the owner of every subsystem.
 
 #### 5. Config validation is shallow
@@ -176,15 +209,16 @@ Recommended fixes:
 - Validate servo duty cycles, positive timings, buffer sizes, confidence thresholds, and odd/effective blur kernel values.
 - Consider a typed config model using dataclasses or Pydantic if dependencies are acceptable.
 
-#### 6. Category naming is inconsistent between prose and config
+#### 6. Historical: category naming was inconsistent between prose and config
+
+Current status note: current runtime config still uses `Recycle Waste`, and current docs intentionally preserve that runtime label. Historical references to `Recyclable Waste` remain in this audit only as examples of earlier drift or as human-readable audio wording, not as runtime category keys.
 
 Evidence:
 
-- `README.md:27` says `Recyclable waste`.
-- `README.md:160-162` says `Recyclable Waste`.
+- At original audit time, some README prose used `Recyclable waste` / `Recyclable Waste`.
 - `configs/class_mapping.yaml:2-4` use `Recycle Waste`.
 - `configs/system_config.yaml:34` and `configs/system_config.yaml:49` use `Recycle Waste`.
-- `docs/deployment.md:307` says `Recyclable Waste`, while `docs/deployment.md:318-320` use `Recycle Waste`.
+- At original audit time, some deployment prose used `Recyclable Waste` while config examples used `Recycle Waste`.
 
 Impact:
 
@@ -262,12 +296,14 @@ Approval needed:
 
 Packaging changes affect install and run commands.
 
-#### 10. No automated tests or smoke checks are present
+#### 10. Historical: automated tests and smoke checks were not present
+
+Current status note: hardware-free tests and `tools/preflight_check.py` now exist. They intentionally do not validate Jetson hardware, camera access, model loading, audio, GPIO, servo movement, or OS shutdown behavior.
 
 Evidence:
 
-- No `tests/` directory exists.
-- Runtime imports Jetson-only modules at import time, making even import-level tests hard off-device.
+- At original audit time, no `tests/` directory existed.
+- Runtime still imports Jetson-only modules at import time in hardware-related modules, making full runtime import-level tests hard off-device.
 
 Impact:
 
@@ -361,14 +397,14 @@ Recommended target responsibilities:
 |---|---|---|
 | `camera.py` | Camera pipeline construction and frame reading | `src/femto/app.py` |
 | `detector.py` | YOLO model loading and inference result normalization | `src/femto/app.py` |
-| `motion_detector.py` | Frame differencing and wake logic | `src/femto/app.py` |
-| `decision_buffer.py` | Consecutive class confirmation and multi-object rules | `src/femto/app.py` |
+| `motion_detector.py` | Frame differencing and wake logic | Completed in `src/femto/motion_detector.py` |
+| `decision_buffer.py` | Consecutive class confirmation and multi-object rules | Completed in `src/femto/decision_buffer.py` |
 | `audio_player.py` | Pygame initialization and sound playback | `src/femto/app.py` |
-| `shutdown_handler.py` | Shutdown-card buffering and OS command execution | `src/femto/app.py` |
+| `shutdown_handler.py` | Future OS shutdown side-effect boundary | Pure confirmation completed in `src/femto/shutdown_detection.py`; OS command execution remains in `src/femto/app.py` |
 | `gpio_backend.py` | Jetson/mock GPIO adapter | `src/femto/servo_controller.py`, `tools/calibrate_servo_angle.py` |
 | `resource_manager.py` | Ordered cleanup of camera, audio, GPIO, and servos | `src/femto/app.py` |
 
-Priority should go to pure, testable logic before hardware abstractions. That gives immediate safety without rewriting the whole runtime at once.
+Pure, testable logic has already been extracted for Phase 2A. Remaining refactor priority should focus on hardware and OS side-effect boundaries after hardware validation planning.
 
 ---
 
@@ -404,7 +440,7 @@ Gaps:
 
 - Placeholder paths make the committed config non-deployable.
 - Config validation checks only top-level sections.
-- Docs use both `Recycle Waste` and `Recyclable Waste`.
+- Historical docs used both `Recycle Waste` and `Recyclable Waste`; current runtime-facing docs should keep `Recycle Waste` unless the runtime config is renamed deliberately.
 - Training/export/calibration tools do not consume shared config.
 - Camera pipeline values are only partially configurable; several GStreamer settings are hardcoded in `src/femto/app.py`.
 
@@ -468,7 +504,7 @@ Gaps:
 - Much of the runtime structure and model workflow is repeated across docs.
 - No single source of truth exists for category labels.
 - No test metadata manifest exists for the result images.
-- Deployment instructions do not include a machine-checkable preflight command.
+- Deployment instructions now include `tools/preflight_check.py`, but this remains hardware-free and does not validate camera, GPIO, model loading, audio, servo movement, or shutdown execution.
 
 Recommended fixes:
 
@@ -492,11 +528,11 @@ Deployment blockers from a fresh clone:
 - CSI camera pipeline requires Jetson camera stack.
 - TensorRT engine compatibility depends on JetPack/TensorRT/CUDA versions.
 - No install script, container file, systemd unit, or startup application file is provided.
-- No preflight checker validates model path, audio paths, camera access, GPIO access, and class/category consistency.
+- `tools/preflight_check.py` now validates config shape, model/audio paths, and class/category consistency. It does not validate camera access, GPIO access, model loading, audio playback, servo movement, or shutdown execution.
 
 Recommended deployment additions:
 
-- `tools/preflight_check.py` for config and environment validation.
+- Extend `tools/preflight_check.py` only if future work needs broader environment checks; current behavior is hardware-free by design.
 - Example `systemd` service or documented Startup Applications command with absolute paths.
 - JetPack version matrix.
 - Known-good package versions.
@@ -549,7 +585,7 @@ Mostly consistent:
 
 Inconsistent or incomplete:
 
-- Docs use `Recyclable Waste`, `Recyclable waste`, and `Recycle Waste`; runtime config uses `Recycle Waste`.
+- Historical docs used `Recyclable Waste`, `Recyclable waste`, and `Recycle Waste`; current runtime-facing docs should keep `Recycle Waste`.
 - The README run command does not make clear enough that committed placeholders must be replaced first.
 - Tool scripts are described as utilities, but they require source edits or placeholder replacement before use.
 - Result images are not tied to a specific config/model/test manifest.
@@ -561,18 +597,15 @@ Inconsistent or incomplete:
 
 ### Phase 1: Stabilize Without Behavioral Change
 
-- Add config preflight validation.
-- Add cross-checks for category mapping, servo positions, and audio category keys.
+- Config preflight validation and cross-checks for category mapping, servo positions, and audio category keys have been added.
 - Add clearer error messages for placeholder model/audio paths.
-- Add tests for `ClassMapper` and config validation.
+- Tests for `ClassMapper`, config validation, preflight behavior, and Phase 2A pure logic have been added.
 - Add a dry-run flag for shutdown behavior.
 
 ### Phase 2: Extract Pure Runtime Logic
 
-- Extract `MotionDetector`.
-- Extract `DecisionBuffer`.
-- Extract shutdown-card buffer logic without changing OS shutdown behavior.
-- Add unit tests for motion thresholds, single-object rules, class switching, and shutdown-card confirmation.
+- `MotionDetector`, `WasteDecisionBuffer`, and pure shutdown-card confirmation have been extracted with hardware-free tests.
+- Full Jetson and hardware validation remains pending.
 
 ### Phase 3: Add Hardware Boundaries
 
@@ -584,15 +617,15 @@ Inconsistent or incomplete:
 
 ### Phase 4: Improve Packaging and Deployment
 
-- Add `pyproject.toml`.
+- `pyproject.toml` has been added for non-invasive tool configuration. Packaging metadata remains future work if needed.
 - Replace `sys.path` launcher behavior with package entry points.
 - Add Jetson requirements or container documentation.
-- Add a preflight command.
+- A hardware-free preflight command has been added. Broader Jetson environment validation remains future work.
 - Add optional `systemd` unit documentation.
 
 ### Phase 5: Documentation and Evidence Cleanup
 
-- Standardize category vocabulary across code/config/docs.
+- Keep category vocabulary aligned around the current runtime label `Recycle Waste`, unless a separate approved rename updates config, docs, assets, and deployment together.
 - Reduce duplicated docs.
 - Add result metadata manifest.
 - Add deployment version matrix.
@@ -604,12 +637,9 @@ Inconsistent or incomplete:
 
 These changes are low-risk and can be automated once approved as a work batch:
 
-- Add a new config validation script that only reads files.
-- Add tests for `ClassMapper`.
-- Add tests for future pure config validation.
+- A hardware-free preflight validation script and tests for current pure validation paths have been added.
 - Add a docs index or result metadata template.
-- Add a preflight checker in warning-only mode.
-- Add `requirements-dev.txt` for test tooling only.
+- `requirements-dev.txt` has been added. The current preflight checker reports failures for placeholder or missing required paths.
 - Add a `.gitkeep` or README note for expected local-only asset directories if desired.
 - Convert tool scripts to accept CLI arguments while preserving existing defaults.
 - Add a mock GPIO backend only if runtime default behavior remains Jetson.
@@ -622,12 +652,12 @@ These changes affect runtime behavior, deployment workflow, naming, or hardware 
 
 - Renaming `Recycle Waste` to `Recyclable Waste` or any other canonical category name.
 - Changing `configs/system_config.yaml` from placeholder config to deployable local config.
-- Adding `configs/system_config.example.yaml` and changing documentation to reference it.
+- Further changing config-file workflow beyond the already-added `configs/system_config.example.yaml`.
 - Changing shutdown-card behavior or adding dry-run defaults.
 - Moving Jetson.GPIO imports behind adapters.
 - Changing camera pipeline generation or supported camera source modes.
 - Changing servo timing, duty cycles, pin defaults, or PWM release behavior.
-- Introducing package installation files such as `pyproject.toml`.
+- Converting the existing non-packaging `pyproject.toml` into installable package metadata.
 - Replacing Startup Applications guidance with a `systemd` service.
 - Updating benchmark claims or result images.
 

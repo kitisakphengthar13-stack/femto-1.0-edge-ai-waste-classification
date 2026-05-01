@@ -31,37 +31,54 @@ The expected project structure is:
 
 ```text
 FEMTO_1.0/
-├── configs/
-│   ├── class_mapping.yaml
-│   └── system_config.yaml
-│
-├── docs/
-│   ├── images/
-│   ├── deployment.md
-│   ├── results.md
-│   └── system_architecture.md
-│
-├── models/
-│   └── README.md
-│
-├── scripts/
-│   └── run_system.py
-│
-├── src/
-│   └── femto/
-│       ├── __init__.py
-│       ├── app.py
-│       ├── class_mapper.py
-│       ├── config.py
-│       └── servo_controller.py
-│
-├── tools/
-│   ├── calibrate_servo_angle.py
-│   ├── model_export.py
-│   └── model_training.py
-│
-├── README.md
-└── requirements.txt
+|-- configs/
+|   |-- class_mapping.yaml
+|   |-- system_config.example.yaml
+|   `-- system_config.yaml
+|-- docs/
+|   |-- images/
+|   |-- configuration.md
+|   |-- deployment.md
+|   |-- development.md
+|   |-- hardware_validation_checklist.md
+|   |-- project_audit.md
+|   |-- project_structure.md
+|   |-- results.md
+|   |-- standardization_plan.md
+|   `-- system_architecture.md
+|-- models/
+|   `-- README.md
+|-- scripts/
+|   `-- run_system.py
+|-- src/
+|   `-- femto/
+|       |-- __init__.py
+|       |-- app.py
+|       |-- class_mapper.py
+|       |-- config.py
+|       |-- decision_buffer.py
+|       |-- motion_detector.py
+|       |-- servo_controller.py
+|       `-- shutdown_detection.py
+|-- tests/
+|   |-- conftest.py
+|   |-- test_class_mapper.py
+|   |-- test_config_validation.py
+|   |-- test_decision_buffer.py
+|   |-- test_motion_detector.py
+|   |-- test_preflight_check.py
+|   `-- test_shutdown_detection.py
+|-- tools/
+|   |-- calibrate_servo_angle.py
+|   |-- model_export.py
+|   |-- model_training.py
+|   `-- preflight_check.py
+|-- .gitattributes
+|-- .gitignore
+|-- pyproject.toml
+|-- README.md
+|-- requirements-dev.txt
+`-- requirements.txt
 ```
 
 The repository does not include actual model files, TensorRT engine files, dataset files, or audio files.
@@ -110,10 +127,14 @@ Main runtime responsibilities are separated as follows:
 | `src/femto/app.py` | Main runtime application loop for camera capture, motion-triggered inference, shutdown card handling, decision buffering, audio feedback, and servo sorting |
 | `src/femto/config.py` | YAML configuration loader and validator |
 | `src/femto/class_mapper.py` | Maps YOLO class names to waste categories using `configs/class_mapping.yaml` |
+| `src/femto/motion_detector.py` | Hardware-free frame-difference motion detection logic |
+| `src/femto/decision_buffer.py` | Hardware-free waste decision buffering and single-object decision logic |
+| `src/femto/shutdown_detection.py` | Hardware-free shutdown-card confirmation buffer |
 | `src/femto/servo_controller.py` | Servo PWM wrapper and non-blocking servo finite-state controller |
 | `tools/calibrate_servo_angle.py` | Utility script for testing and calibrating servo angles before running the full sorting system |
-| `tools/model_training.py` | Utility script for training the YOLO waste classification/detection model |
-| `tools/model_export.py` | Utility script for exporting the trained YOLO model to TensorRT engine format for Jetson deployment |
+| `tools/model_training.py` | Example training script with placeholder paths that must be edited or converted to CLI arguments before use |
+| `tools/model_export.py` | Example TensorRT export script with placeholder paths that must be edited or converted to CLI arguments before use |
+| `tools/preflight_check.py` | Hardware-free configuration and asset-path preflight checker |
 
 ---
 
@@ -159,11 +180,13 @@ model:
 
 ## 5. TensorRT Export
 
-The TensorRT engine can be exported from the trained `.pt` model using:
+The repository includes an example TensorRT export script at:
 
 ```text
 tools/model_export.py
 ```
+
+The current script contains a placeholder checkpoint path and must be edited for the local `.pt` file or converted to CLI arguments before use.
 
 The export process follows this workflow:
 
@@ -483,6 +506,8 @@ python tools/preflight_check.py
 ```
 
 The preflight checker reads `configs/system_config.yaml` and `configs/class_mapping.yaml`, detects placeholder or missing model/audio paths, and verifies category consistency across class mapping, servo positions, and audio entries. It does not import `Jetson.GPIO`, open the camera, load the YOLO model, play audio, move servos, execute shutdown, or modify files.
+
+Phase 2A pure logic has been extracted into hardware-free modules for motion detection, waste decision buffering, and shutdown-card confirmation. Full Jetson and hardware validation for the Phase 2A refactor is still pending. Use `docs/hardware_validation_checklist.md` before treating the refactor as validated on the target device.
 
 The main runtime entry point is:
 
