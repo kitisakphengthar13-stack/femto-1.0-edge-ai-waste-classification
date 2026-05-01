@@ -14,7 +14,6 @@ FEMTO_1.0/
 |   |-- deployment.md
 |   |-- development.md
 |   |-- hardware_validation_checklist.md
-|   |-- project_audit.md
 |   |-- project_structure.md
 |   |-- results.md
 |   |-- standardization_plan.md
@@ -59,7 +58,7 @@ FEMTO_1.0/
 | Path | Role |
 |---|---|
 | `configs/` | Runtime YAML files and example config template. |
-| `docs/` | Architecture, deployment, configuration, development, audit, and result documentation. |
+| `docs/` | Architecture, deployment, configuration, development, and result documentation. |
 | `docs/images/` | Existing result and system evidence images. |
 | `models/` | Model placement documentation. Actual model files are intentionally ignored. |
 | `scripts/` | Production runtime entry points. |

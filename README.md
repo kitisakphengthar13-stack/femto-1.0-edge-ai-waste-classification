@@ -219,7 +219,6 @@ FEMTO_1.0/
 |   |-- deployment.md
 |   |-- development.md
 |   |-- hardware_validation_checklist.md
-|   |-- project_audit.md
 |   |-- project_structure.md
 |   |-- results.md
 |   |-- standardization_plan.md
