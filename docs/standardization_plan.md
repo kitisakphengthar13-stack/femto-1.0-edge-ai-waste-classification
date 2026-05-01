@@ -13,6 +13,7 @@ This document records the conservative repository-standardization pass. It separ
 - Added `tools/preflight_check.py` to validate configs without importing Jetson hardware modules.
 - Added focused documentation for configuration, development checks, and repository structure.
 - Added README/deployment guidance for preflight and hardware-free checks.
+- Extracted Phase 2A pure logic for motion detection, waste decision buffering, and shutdown-card confirmation into hardware-free modules with unit tests.
 
 ## Intentionally Unchanged
 
@@ -25,6 +26,7 @@ This document records the conservative repository-standardization pass. It separ
 - Runtime category names such as `Recycle Waste`.
 - Active `configs/system_config.yaml` schema.
 - Production runtime entry point `python scripts/run_system.py`.
+- Hardware boundaries in `src/femto/app.py`; camera, YOLO, audio, servo, GPIO, and shutdown side effects remain owned by the runtime app.
 
 ## Requires Real Jetson / Hardware Validation
 

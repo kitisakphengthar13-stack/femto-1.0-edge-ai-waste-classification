@@ -4,7 +4,6 @@ import subprocess
 import sys
 import time
 import warnings
-from collections import deque
 
 # Suppress expected RuntimeWarning from Jetson.GPIO during resource cleanup.
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="Jetson.GPIO")
@@ -19,7 +18,10 @@ import Jetson.GPIO as GPIO
 from ultralytics import YOLO
 
 from femto.class_mapper import ClassMapper
+from femto.decision_buffer import WasteDecisionBuffer
+from femto.motion_detector import MotionDetector
 from femto.servo_controller import ServoController
+from femto.shutdown_detection import ShutdownCardDetector
 
 
 class FemtoApp:
@@ -52,6 +54,18 @@ class FemtoApp:
 
         self.class_mapper = ClassMapper(mapping_config)
         self.servo_controller = ServoController(self.servo_config)
+        self.motion_detector = MotionDetector(self.motion_config)
+        self.decision_buffer = WasteDecisionBuffer(
+            buffer_size=self.decision_config["buffer_size"],
+            allow_multiple_objects=self.decision_config.get("allow_multiple_objects", False),
+            waste_classes=mapping_config["waste_classes"],
+            special_classes=mapping_config.get("special_classes", {}),
+        )
+        self.shutdown_detector = ShutdownCardDetector(
+            class_name=self.shutdown_config["class_name"],
+            confidence_threshold=self.shutdown_config["confidence_threshold"],
+            buffer_size=self.shutdown_config["buffer_size"],
+        )
 
         self.model = None
         self.cap = None
@@ -61,13 +75,7 @@ class FemtoApp:
         self.shutdown_sound = None
         self.startup_sound = None
 
-        self.shutdown_buffer = deque(
-            maxlen=self.shutdown_config["buffer_size"]
-        )
-
         self.cooldown_until = 0.0
-        self.current_class = None
-        self.consecutive_count = 0
 
         self.exiting = False
 
@@ -185,7 +193,7 @@ class FemtoApp:
 
                 motion_pixels = motion_result["motion_pixels"]
 
-                if motion_pixels > self.motion_config["pixel_threshold"] or self.servo_controller.active:
+                if self.motion_detector.should_wake_yolo(motion_pixels, self.servo_controller.active):
                     yolo_awake_until = now + self.motion_config["yolo_awake_duration_seconds"]
                     is_yolo_awake = True
 
@@ -206,39 +214,12 @@ class FemtoApp:
             self.cleanup_resources()
 
     def _process_motion(self, frame, prev_gray):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        blur_kernel_size = self.motion_config.get("blur_kernel_size", 21)
-
-        if blur_kernel_size % 2 == 0:
-            blur_kernel_size += 1
-
-        gray = cv2.GaussianBlur(gray, (blur_kernel_size, blur_kernel_size), 0)
-
-        if prev_gray is None:
-            return {
-                "first_frame": True,
-                "gray": gray,
-                "motion_pixels": 0,
-            }
-
-        diff = cv2.absdiff(prev_gray, gray)
-
-        frame_diff_threshold = self.motion_config.get("frame_diff_threshold", 25)
-
-        _, thresh = cv2.threshold(
-            diff,
-            frame_diff_threshold,
-            255,
-            cv2.THRESH_BINARY,
-        )
-
-        motion_pixels = cv2.countNonZero(thresh)
+        motion_result = self.motion_detector.process_frame(frame, prev_gray)
 
         return {
-            "first_frame": False,
-            "gray": gray,
-            "motion_pixels": motion_pixels,
+            "first_frame": motion_result.first_frame,
+            "gray": motion_result.gray,
+            "motion_pixels": motion_result.motion_pixels,
         }
 
     def _run_inference_cycle(self, frame, now: float) -> None:
@@ -264,66 +245,19 @@ class FemtoApp:
             self._handle_waste_detection(classes_in_frame, now)
 
     def _handle_shutdown_card(self, classes_in_frame: list[str], confs_in_frame: list[float]) -> None:
-        shutdown_class = self.shutdown_config["class_name"]
-        shutdown_conf_threshold = self.shutdown_config["confidence_threshold"]
-
-        is_shutdown_detected = (
-            len(classes_in_frame) == 1
-            and classes_in_frame[0] == shutdown_class
-            and confs_in_frame[0] >= shutdown_conf_threshold
-        )
-
-        if is_shutdown_detected:
-            self.shutdown_buffer.append(True)
-        else:
-            self.shutdown_buffer.clear()
-
-        if len(self.shutdown_buffer) == self.shutdown_config["buffer_size"]:
+        if self.shutdown_detector.update(classes_in_frame, confs_in_frame):
             self._play_shutdown_sound()
             print("[SYSTEM] Consecutive shutdown cards detected. Executing poweroff.")
             time.sleep(self.shutdown_config["delay_seconds"])
             self.perform_system_shutdown(poweroff=True)
 
     def _handle_waste_detection(self, classes_in_frame: list[str], now: float) -> None:
-        if len(classes_in_frame) == 0:
-            return
+        decision_result = self.decision_buffer.update(classes_in_frame)
 
-        allow_multiple_objects = self.decision_config.get("allow_multiple_objects", False)
-
-        if len(classes_in_frame) > 1 and not allow_multiple_objects:
-            self.current_class = None
-            self.consecutive_count = 0
-            return
-
-        frame_class = classes_in_frame[0]
-
-        if self.class_mapper.is_shutdown_class(frame_class):
-            return
-
-        if self.current_class is None:
-            self.current_class = frame_class
-            self.consecutive_count = 1
-
-        elif frame_class == self.current_class:
-            self.consecutive_count += 1
-
-        else:
-            self.current_class = frame_class
-            self.consecutive_count = 1
-
-        if self.consecutive_count < self.decision_config["buffer_size"]:
-            return
-
-        final_class = self.current_class
-        waste_type = self.class_mapper.get_waste_type(final_class)
-
-        if waste_type:
-            self.servo_controller.start_sorting(waste_type)
-            self._play_category_sound(waste_type)
+        if decision_result.should_sort and decision_result.waste_type:
+            self.servo_controller.start_sorting(decision_result.waste_type)
+            self._play_category_sound(decision_result.waste_type)
             self.cooldown_until = now + self.decision_config["result_delay_seconds"]
-
-        self.current_class = None
-        self.consecutive_count = 0
 
     # ------------------------------------------------------------------
     # Audio
@@ -357,9 +291,8 @@ class FemtoApp:
     # ------------------------------------------------------------------
 
     def _reset_inference_buffers(self) -> None:
-        self.current_class = None
-        self.consecutive_count = 0
-        self.shutdown_buffer.clear()
+        self.decision_buffer.reset()
+        self.shutdown_detector.reset()
 
     def cleanup_resources(self) -> None:
         try:
