@@ -75,7 +75,7 @@ These values are documented by the included result images and are system-level p
 - Servo-based physical sorting mechanism
 - PWM-based actuator control
 - Non-blocking servo finite-state control
-- Consecutive detection buffering to reduce unstable predictions
+- Decision buffering to reduce unstable predictions
 - YAML-based runtime configuration
 - Voice feedback system for user interaction
 - Shutdown card detection for safe system shutdown

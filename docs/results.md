@@ -198,7 +198,7 @@ Motion-triggered YOLO inference
     ↓
 Single-object decision rule
     ↓
-Consecutive detection buffering
+Decision buffering
     ↓
 Class-to-category mapping
     ↓

@@ -18,7 +18,7 @@ The system includes the following main functions:
 - Motion-triggered YOLO inference
 - TensorRT-based object detection
 - Waste class-to-category mapping
-- Consecutive detection buffering
+- Decision buffering for stable same-class sorting decisions
 - Servo-based physical sorting
 - Voice feedback for user interaction
 - Shutdown card detection for safe shutdown
@@ -327,15 +327,15 @@ The decision logic follows this process:
 ```text
 YOLO Detection Result
     ↓
-Check Number of Detected Objects
+Reject Multi-Object Detections
     ↓
-Accept Only Single-Object Detection
+Ignore Empty Frames and Isolated Special Classes
     ↓
 Compare Current Valid Waste Class with Previous Class
     ↓
-Increase Consecutive Count if Class Matches
+Increase Decision Count if Valid Class Matches
     ↓
-Trigger Sorting When Count Reaches Buffer Size
+Trigger Sorting When Decision Count Reaches Buffer Size
 ```
 
 Femto 1.0 is designed for controlled single-item disposal with supported waste classes. The system expects one supported waste item at a time.
@@ -549,7 +549,7 @@ Several design decisions were made to improve system stability and make the syst
 |---|---|
 | TensorRT `.engine` deployment | Provides an optimized deployment format for NVIDIA Jetson hardware |
 | Motion-triggered inference | Reduces unnecessary YOLO processing when no object is present |
-| Consecutive detection buffering | Reduces unstable predictions and false sorting actions |
+| Decision buffering | Reduces unstable predictions and false sorting actions |
 | Single-object decision rule | Avoids sorting when the scene contains multiple detected objects |
 | Controlled single-item operation | Keeps the prototype within its intended use: one supported waste item at a time, not multi-item disposal, misuse, or out-of-scope objects |
 | YAML-based configuration | Allows runtime settings to be changed without editing source code |
