@@ -23,13 +23,13 @@ python tools/preflight_check.py
 Run the hardware-free tests:
 
 ```bash
-python -m pytest
+pytest
 ```
 
 Run a syntax/import compile check without importing the Jetson runtime app:
 
 ```bash
-python -m compileall tools tests src/femto/class_mapper.py src/femto/config.py src/femto/motion_detector.py src/femto/decision_buffer.py src/femto/shutdown_detection.py
+python -m compileall src tests tools
 ```
 
 Do not use these checks as hardware validation. They do not load the YOLO model, open the CSI camera, initialize audio, touch GPIO, move servos, or execute shutdown behavior.
@@ -74,4 +74,4 @@ Phase 2A extracts only hardware-free logic from `src/femto/app.py`:
 - `src/femto/decision_buffer.py`
 - `src/femto/shutdown_detection.py`
 
-The runtime app still owns camera setup, YOLO model loading and invocation, audio playback, servo calls, GPIO cleanup, signal handling, and shutdown command execution. Hardware boundaries are intentionally unchanged until Jetson testing is available.
+The runtime app still owns camera setup, YOLO model loading and invocation, audio playback, servo calls, GPIO cleanup, signal handling, and shutdown command execution. Hardware boundaries are intentionally unchanged until Jetson testing is available. No completed hardware validation results are currently documented in this repository.

@@ -40,7 +40,6 @@ FEMTO_1.0/
 |   |-- configuration.md
 |   |-- deployment.md
 |   |-- development.md
-|   |-- hardware_validation_checklist.md
 |   |-- project_structure.md
 |   |-- results.md
 |   |-- standardization_plan.md
@@ -506,7 +505,7 @@ python tools/preflight_check.py
 
 The preflight checker reads `configs/system_config.yaml` and `configs/class_mapping.yaml`, detects placeholder or missing model/audio paths, and verifies category consistency across class mapping, servo positions, and audio entries. It does not import `Jetson.GPIO`, open the camera, load the YOLO model, play audio, move servos, execute shutdown, or modify files.
 
-Phase 2A pure logic has been extracted into hardware-free modules for motion detection, waste decision buffering, and shutdown-card confirmation. Full Jetson and hardware validation for the Phase 2A refactor is still pending. Use `docs/hardware_validation_checklist.md` before treating the refactor as validated on the target device.
+Phase 2A pure logic has been extracted into hardware-free modules for motion detection, waste decision buffering, and shutdown-card confirmation. Automated tests cover hardware-free software logic. Jetson-specific behavior such as TensorRT runtime, CSI camera, GPIO, servo movement, audio playback, and poweroff behavior must still be validated manually on the target device. No completed hardware validation results are currently documented in this repository.
 
 The main runtime entry point is:
 

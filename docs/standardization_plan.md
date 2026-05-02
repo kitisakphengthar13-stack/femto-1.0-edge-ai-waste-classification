@@ -30,6 +30,8 @@ This document records the conservative repository-standardization pass. It separ
 
 ## Requires Real Jetson / Hardware Validation
 
+No completed hardware validation results are currently documented in this repository. The items below must still be checked manually on the target device:
+
 - Running `scripts/run_system.py`.
 - Loading the TensorRT `.engine` model.
 - Opening the CSI camera through the configured GStreamer pipeline.

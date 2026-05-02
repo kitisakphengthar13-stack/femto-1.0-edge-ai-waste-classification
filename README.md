@@ -218,7 +218,6 @@ FEMTO_1.0/
 |   |-- configuration.md
 |   |-- deployment.md
 |   |-- development.md
-|   |-- hardware_validation_checklist.md
 |   |-- project_structure.md
 |   |-- results.md
 |   |-- standardization_plan.md
@@ -281,7 +280,6 @@ FEMTO_1.0/
 | `tests/` | Hardware-free tests for pure logic and validation helpers |
 | `docs/configuration.md` | Configuration reference and category naming notes |
 | `docs/development.md` | Hardware-free development checks and test instructions |
-| `docs/hardware_validation_checklist.md` | Jetson validation checklist for Phase 2A and runtime behavior |
 | `docs/project_structure.md` | Standard repository layout reference |
 | `docs/system_architecture.md` | System architecture details |
 | `docs/results.md` | Performance results |
@@ -329,8 +327,8 @@ For hardware-free development checks:
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest
-python -m compileall tools tests src/femto/class_mapper.py src/femto/config.py src/femto/motion_detector.py src/femto/decision_buffer.py src/femto/shutdown_detection.py
+pytest
+python -m compileall src tests tools
 ```
 
 These checks do not replace real Jetson validation. They intentionally avoid loading `src/femto/app.py`, opening the camera, importing `Jetson.GPIO`, moving servos, loading the YOLO model, playing audio, or executing shutdown behavior.
@@ -398,7 +396,7 @@ The current version focuses on real-time object detection, Edge AI deployment, Y
 
 Repository standardization is complete for the current pass. The runtime has been refactored from a single-script structure into a clearer modular structure using `scripts/`, `src/femto/`, `configs/`, and `tools/`.
 
-Phase 2A pure-logic extraction is complete for motion detection, waste decision buffering, and shutdown-card confirmation. Full Jetson and hardware validation for this Phase 2A refactor is still pending; see `docs/hardware_validation_checklist.md`.
+Phase 2A pure-logic extraction is complete for motion detection, waste decision buffering, and shutdown-card confirmation. Automated tests cover hardware-free software logic. Jetson-specific behavior such as TensorRT runtime, CSI camera, GPIO, servo movement, audio playback, and poweroff behavior must still be validated manually on the target device. No completed hardware validation results are currently documented in this repository.
 
 Future improvements may include larger dataset collection, improved mechanical design, additional sensor integration, better handling of overlapping waste items, more robust performance under different lighting conditions, and further separation of runtime side-effect modules such as camera, detector, audio player, shutdown execution, and resource management.
 
