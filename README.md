@@ -175,6 +175,18 @@ Waste class-to-category mapping is defined in `configs/class_mapping.yaml`.
 
 ---
 
+## Controlled Single-Item Operation
+
+Femto 1.0 is designed for controlled single-item disposal. The system expects one supported waste item at a time.
+
+If YOLO detects more than one object or class in the same frame, the waste decision buffer is reset or rejected and no sorting action is triggered. Sorting is confirmed when the same valid waste class reaches the configured decision buffer count and maps to a configured waste category.
+
+Empty frames do not increment the count and do not reset the waste decision buffer. Isolated special classes such as `shutdown_card` are ignored by waste sorting and do not increment the waste decision buffer.
+
+Shutdown-card handling is separate from waste sorting. Shutdown is confirmed only when exactly one `shutdown_card` is detected alone with sufficient confidence for the configured shutdown buffer count; mixed or duplicate detections clear the shutdown confirmation buffer.
+
+---
+
 ## Configuration
 
 Femto 1.0 uses YAML configuration files to separate runtime settings from source code.

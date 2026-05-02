@@ -45,6 +45,8 @@ Current tests cover:
 - Pure waste decision buffering logic using fake class names.
 - Pure shutdown-card confirmation logic using fake class names and confidence values.
 
+The pure-logic tests cover decision-buffer behavior such as same-class counting, class-change restart, empty-frame count preservation, multi-object reset when multi-object support is disabled, and isolated special-class handling. They also cover shutdown-card confirmation separately using fake class names and confidence values.
+
 Current tests intentionally avoid:
 
 - `src/femto/app.py`

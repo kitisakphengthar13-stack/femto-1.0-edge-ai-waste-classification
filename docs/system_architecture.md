@@ -318,7 +318,7 @@ The `shutdown_card` class is used only for safe system shutdown and is not count
 
 ## 10. Decision Buffering Logic
 
-The system does not immediately trigger sorting from a single-frame prediction. Instead, it uses a consecutive detection buffer to confirm that the detected class is stable.
+The system does not immediately trigger sorting from a single-frame prediction. Instead, it uses a decision buffer to confirm that the detected class is stable enough to sort.
 
 This helps reduce unstable predictions, false triggers, and accidental servo activation.
 
@@ -331,14 +331,22 @@ Check Number of Detected Objects
     ↓
 Accept Only Single-Object Detection
     ↓
-Compare Current Class with Previous Class
+Compare Current Valid Waste Class with Previous Class
     ↓
 Increase Consecutive Count if Class Matches
     ↓
 Trigger Sorting When Count Reaches Buffer Size
 ```
 
-If multiple objects are detected in the same frame, the system resets the current decision buffer. This prevents the mechanism from sorting when the scene is ambiguous.
+Femto 1.0 is designed for controlled single-item disposal with supported waste classes. The system expects one supported waste item at a time.
+
+If YOLO detects more than one object or class in the same frame, the system resets or rejects the current waste decision buffer and does not trigger sorting. This prevents the mechanism from sorting when the scene is ambiguous or outside the intended operating condition.
+
+Sorting is confirmed when the same valid waste class reaches the configured decision buffer count and maps to a configured waste category. A same valid waste class detection increments the count. A different single detected class restarts the count for that new class.
+
+Empty frames do not increment the count and do not reset the waste decision buffer. For example, `can -> empty -> empty -> can` results in a `can` count of 2, not 4 and not a reset to 1.
+
+Isolated special classes such as `shutdown_card` are ignored by waste sorting and do not increment the waste decision buffer. Shutdown-card confirmation is handled separately by `src/femto/shutdown_detection.py`.
 
 After a sorting action is triggered, the system enters a short cooldown period before accepting the next sorting decision.
 
@@ -451,7 +459,7 @@ configs/system_config.yaml
 
 ## 15. Shutdown Card Detection
 
-The system includes a shutdown card detection function for safe shutdown operation.
+The system includes a shutdown card detection function for safe shutdown operation. Shutdown-card handling is separate from waste sorting.
 
 Instead of directly cutting power to the Jetson device, the system detects a special `shutdown_card` class using the YOLO model. When the shutdown card is detected continuously for a configured number of frames, the system plays a shutdown alert and then performs a system-level poweroff command.
 
@@ -478,6 +486,8 @@ The shutdown card confidence threshold, buffer size, delay, and shutdown sound p
 ```text
 configs/system_config.yaml
 ```
+
+Shutdown is confirmed only when exactly one `shutdown_card` is detected alone with sufficient confidence for the configured shutdown buffer count. If `shutdown_card` appears together with any other detected object or class, or if multiple `shutdown_card` boxes are detected in the same frame, the shutdown confirmation buffer is cleared and shutdown is not triggered.
 
 ---
 
@@ -541,6 +551,7 @@ Several design decisions were made to improve system stability and make the syst
 | Motion-triggered inference | Reduces unnecessary YOLO processing when no object is present |
 | Consecutive detection buffering | Reduces unstable predictions and false sorting actions |
 | Single-object decision rule | Avoids sorting when the scene contains multiple detected objects |
+| Controlled single-item operation | Keeps the prototype within its intended use: one supported waste item at a time, not multi-item disposal, misuse, or out-of-scope objects |
 | YAML-based configuration | Allows runtime settings to be changed without editing source code |
 | Non-blocking servo FSM | Allows the main runtime loop to continue while servo movement is in progress |
 | PWM release on rotation servo | Reduces mechanical jitter from the rotation mechanism |

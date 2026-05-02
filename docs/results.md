@@ -31,7 +31,7 @@ The average hardware sorting time is the reported average time across all 10 was
 
 ## 2. Result Scope
 
-The values in this document represent **reported system-level prototype results**.
+The values in this document represent **reported system-level prototype results** under controlled single-item operation.
 
 They include the practical behavior of the running system, such as:
 
@@ -246,6 +246,8 @@ The system currently works best when:
 - The item is positioned within the expected sorting area
 
 The current decision logic intentionally rejects multiple detected objects in the same frame to avoid ambiguous sorting decisions.
+
+Multi-object or multi-class disposal is not a supported result condition. When more than one object or class is detected in the same frame, the waste decision buffer is reset or rejected and no sorting action is triggered.
 
 ---
 

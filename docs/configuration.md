@@ -37,6 +37,12 @@ The preflight check is read-only. It validates YAML shape, detects placeholder o
 | `servo` | Pins, PWM frequency, start position, category positions, and movement timing. |
 | `runtime` | Loop sleep and dropped-frame sleep timing. |
 
+## Controlled-Use Decision Behavior
+
+The production/default controlled-use behavior is single-item operation. The active config uses `decision.allow_multiple_objects: false`, so frames with more than one detected object or class reset or reject the waste decision buffer instead of triggering sorting.
+
+Changing multi-object support would change the intended operating behavior and should be treated as a runtime behavior change, not a simple tuning adjustment.
+
 ## Category Names
 
 The active runtime category labels are currently:

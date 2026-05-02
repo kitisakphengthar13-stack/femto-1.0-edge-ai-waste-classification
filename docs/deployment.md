@@ -554,6 +554,12 @@ Before running, confirm that:
 - The servo power supply is stable
 - GPIO permissions are available
 
+During operation:
+
+- Place one supported waste item in the sorting area at a time.
+- Do not place multiple waste items together. If YOLO detects more than one object or class in the same frame, the waste decision buffer is reset or rejected and no sorting action is triggered.
+- Use the shutdown card by itself. If `shutdown_card` appears with another detected object or class, or if multiple `shutdown_card` boxes are detected in the same frame, the shutdown confirmation buffer is cleared and shutdown is not triggered.
+
 ---
 
 ## 12. Startup Applications Setup
@@ -630,6 +636,8 @@ shutdown:
   delay_seconds: 10.0
   sound_path: "path/to/shutdown_alert.mp3"
 ```
+
+Use the shutdown card alone. Shutdown is confirmed only when exactly one `shutdown_card` is detected with sufficient confidence for the configured consecutive buffer count.
 
 ---
 
